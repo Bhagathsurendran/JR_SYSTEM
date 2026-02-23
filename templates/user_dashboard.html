@@ -1,0 +1,997 @@
+  {% load static %}
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InternHub — Student Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap" rel="stylesheet">
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --black:      #0a0a0a;
+        --near-black: #111111;
+        --dark:       #1a1a1a;
+        --mid:        #3d3d3d;
+        --subtle:     #6b6b6b;
+        --muted:      #a0a0a0;
+        --light:      #d4d4d4;
+        --ghost:      #ebebeb;
+        --off:        #f5f5f5;
+        --white:      #fafafa;
+        --pure:       #ffffff;
+        --sidebar-w:  220px;
+        --nav-h:      58px;
+      }
+
+      body {
+        font-family: 'DM Sans', sans-serif;
+        background: var(--white);
+        color: var(--black);
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* ─── SIDEBAR ─── */
+      .sidebar {
+        position: fixed; left: 0; top: 0; bottom: 0;
+        width: var(--sidebar-w);
+        background: var(--black);
+        display: flex; flex-direction: column;
+        z-index: 200;
+        border-right: 1px solid var(--dark);
+        transition: transform .3s ease;
+      }
+
+      .sidebar-logo {
+        display: flex; align-items: center; gap: 10px;
+        padding: 22px 24px 20px;
+        border-bottom: 1px solid var(--dark);
+      }
+      .logo-mark {
+        width: 28px; height: 28px;
+        background: var(--white);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 13px; font-weight: 900; color: var(--black);
+        flex-shrink: 0;
+      }
+      .logo-name {
+        font-size: 16px; font-weight: 700;
+        color: var(--white); letter-spacing: -.02em;
+      }
+      .logo-pill {
+        margin-left: auto;
+        font-size: 9px; font-weight: 600;
+        border: 1px solid var(--subtle); color: var(--muted);
+        padding: 2px 7px; text-transform: uppercase; letter-spacing: .04em;
+      }
+
+      .nav-section-label {
+        padding: 20px 24px 8px;
+        font-size: 9px; font-weight: 600;
+        letter-spacing: .08em; text-transform: uppercase;
+        color: var(--subtle);
+      }
+
+      .nav-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 24px;
+        cursor: pointer; font-size: 13px; font-weight: 400;
+        color: var(--muted);
+        transition: all .15s; border: none; background: none;
+        width: 100%; text-align: left; position: relative;
+      }
+      .nav-item:hover { color: var(--white); background: var(--dark); }
+      .nav-item.active {
+        color: var(--white); font-weight: 600;
+        background: var(--near-black);
+        border-left: 2px solid var(--white);
+        padding-left: 22px;
+      }
+      .nav-item svg { flex-shrink: 0; opacity: .6; }
+      .nav-item.active svg { opacity: 1; }
+      .n-badge {
+        margin-left: auto; min-width: 18px; height: 18px;
+        font-size: 10px; font-weight: 600;
+        display: flex; align-items: center; justify-content: center; padding: 0 5px;
+      }
+      .n-dark { background: var(--dark); color: var(--light); }
+      .n-mid  { background: var(--mid);  color: var(--white); }
+
+      /* ─── SIDEBAR FOOTER / PROFILE POPUP ─── */
+      .sidebar-footer {
+        margin-top: auto;
+        border-top: 1px solid var(--dark);
+        position: relative;
+      }
+
+      /* Popup menu — slides up from footer */
+      .profile-popup {
+        position: absolute;
+        bottom: 100%;
+        left: 0; right: 0;
+        background: var(--near-black);
+        border-top: 1px solid var(--dark);
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: max-height .25s ease, opacity .2s ease, transform .2s ease;
+        pointer-events: none;
+      }
+      .sidebar-footer:hover .profile-popup,
+      .sidebar-footer:focus-within .profile-popup {
+        max-height: 200px;
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: all;
+      }
+
+      .popup-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 11px 20px;
+        font-size: 13px; font-weight: 500; color: var(--muted);
+        cursor: pointer; border: none; background: none;
+        width: 100%; text-align: left;
+        transition: all .15s;
+        border-bottom: 1px solid var(--dark);
+      }
+      .popup-item:last-child { border-bottom: none; }
+      .popup-item:hover { background: var(--dark); color: var(--white); }
+      .popup-item svg { flex-shrink: 0; opacity: .65; }
+      .popup-item:hover svg { opacity: 1; }
+      .popup-item.danger { color: #f87171; }
+      .popup-item.danger:hover { background: rgba(248,113,113,.08); color: #fca5a5; }
+      .popup-item.active-page { color: var(--white); background: var(--dark); font-weight: 600; }
+
+      /* User tile — the trigger */
+      .user-tile {
+        display: flex; align-items: center; gap: 10px;
+        padding: 14px 20px;
+        cursor: pointer; transition: background .15s;
+        position: relative;
+      }
+      .sidebar-footer:hover .user-tile { background: var(--dark); }
+      .u-avatar {
+        background: var(--dark);
+        width: 30px; height: 30px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700; color: var(--black); flex-shrink: 0;
+      }
+      .u-name  { font-size: 12.5px; font-weight: 600; color: var(--white); line-height: 1.2; }
+      .u-role  { font-size: 10px; color: var(--subtle); margin-top: 2px; }
+      .u-chevron {
+        margin-left: auto; color: var(--subtle);
+        transition: transform .2s;
+      }
+      .sidebar-footer:hover .u-chevron { transform: rotate(180deg); color: var(--muted); }
+
+      /* ─── TOP NAV ─── */
+      .topnav {
+        position: fixed; top: 0; left: var(--sidebar-w); right: 0;
+        height: var(--nav-h); background: var(--pure);
+        border-bottom: 1px solid var(--ghost);
+        display: flex; align-items: center;
+        padding: 0 32px; gap: 14px; z-index: 100;
+      }
+      .search-bar {
+        display: flex; align-items: center; gap: 8px;
+        background: var(--off); border: 1px solid var(--ghost);
+        padding: 8px 14px;
+        flex: 1; max-width: 360px; transition: all .2s;
+      }
+      .search-bar:focus-within { border-color: var(--black); background: var(--pure); }
+      .search-bar input {
+        border: none; background: transparent; outline: none;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px; color: var(--black); width: 100%;
+      }
+      .search-bar input::placeholder { color: var(--muted); }
+      .topnav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+      .icon-btn {
+        width: 34px; height: 34px; border: none;
+        background: transparent; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: var(--mid); transition: background .15s; position: relative;
+      }
+      .icon-btn:hover { background: var(--off); }
+      .notif-dot {
+        position: absolute; top: 6px; right: 6px;
+        width: 6px; height: 6px;
+        background: var(--black); border: 2px solid var(--pure);
+      }
+      .btn {
+        display: inline-flex; align-items: center; gap: 7px;
+        height: 36px; padding: 0 18px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 12px; font-weight: 600;
+        cursor: pointer; border: none;
+        transition: all .15s;
+      }
+      .btn-dark { background: var(--black); color: var(--white); }
+      .btn-dark:hover { background: var(--dark); transform: translateY(-1px); }
+      .btn-outline { background: var(--pure); color: var(--black); border: 1px solid var(--light); }
+      .btn-outline:hover { background: var(--off); border-color: var(--mid); }
+      .btn-ghost { background: transparent; color: var(--mid); border: 1px solid var(--ghost); }
+      .btn-ghost:hover { border-color: var(--light); color: var(--black); }
+      .hamburger { display: none; }
+
+      /* ─── LAYOUT ─── */
+      .main { margin-left: var(--sidebar-w); padding-top: var(--nav-h); min-height: 100vh; }
+      .page { display: none; padding: 36px 36px 64px; animation: fadeUp .2s ease both; }
+      .page.active { display: block; }
+      @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+      /* ─── PAGE HEADER ─── */
+      .ph {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 16px; flex-wrap: wrap; margin-bottom: 32px;
+        padding-bottom: 24px; border-bottom: 1px solid var(--ghost);
+      }
+      .ph-title {
+        font-size: clamp(26px, 3vw, 38px); font-weight: 900;
+        letter-spacing: -.03em; color: var(--black); line-height: 1.05;
+      }
+      .ph-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+      /* ─── STAT CARDS ─── */
+      .stats-row {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 1px; margin-bottom: 32px;
+        background: var(--ghost); border: 1px solid var(--ghost);
+      }
+      @media(max-width:840px) { .stats-row { grid-template-columns: repeat(2,1fr); } }
+      @media(max-width:500px) { .stats-row { grid-template-columns: 1fr; } }
+
+      .stat-card {
+        background: var(--pure); padding: 28px 28px 24px;
+        transition: background .2s; position: relative; overflow: hidden;
+      }
+      .stat-card:hover { background: var(--off); }
+      .stat-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+      .stat-lbl { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--muted); letter-spacing: .04em; }
+      .stat-pill { font-size: 10px; font-weight: 600; padding: 3px 8px; }
+      .pill-outline { border: 1px solid var(--light); color: var(--mid); }
+      .pill-dark { background: var(--black); color: var(--white); }
+      .pill-ghost { background: var(--off); color: var(--subtle); border: 1px solid var(--ghost); }
+      .stat-val { font-size: 44px; font-weight: 900; letter-spacing: -.05em; color: var(--black); line-height: 1; }
+
+      /* ─── TABS ─── */
+      .tabs {
+        display: flex; align-items: center;
+        border-bottom: 1px solid var(--ghost);
+        margin-bottom: 24px;
+      }
+      .tab {
+        padding: 10px 20px; font-size: 13px; font-weight: 500;
+        color: var(--muted); cursor: pointer; border: none; background: none;
+        border-bottom: 2px solid transparent; margin-bottom: -1px;
+        transition: all .15s; display: flex; align-items: center; gap: 7px;
+        font-family: 'DM Sans', sans-serif;
+      }
+      .tab:hover { color: var(--dark); }
+      .tab.active { color: var(--black); border-bottom-color: var(--black); font-weight: 600; }
+      .tab-count {
+        font-size: 10px; font-weight: 600;
+        background: var(--off); color: var(--mid);
+        padding: 2px 6px; border: 1px solid var(--ghost);
+      }
+
+      /* ─── SEARCH FILTER BAR ─── */
+      .sf-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+      .sf-search {
+        flex: 1; display: flex; align-items: center; gap: 8px;
+        background: var(--off); border: 1px solid var(--ghost);
+        padding: 10px 16px; transition: all .2s;
+      }
+      .sf-search:focus-within { border-color: var(--black); background: var(--pure); }
+      .sf-search input {
+        border: none; background: transparent; outline: none;
+        font-family: 'DM Sans', sans-serif; font-size: 13.5px; color: var(--black); width: 100%;
+      }
+      .sf-search input::placeholder { color: var(--muted); }
+      .filter-btn {
+        display: flex; align-items: center; gap: 7px;
+        height: 42px; padding: 0 18px;
+        background: var(--pure); border: 1px solid var(--ghost);
+        font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 600;
+        color: var(--mid); cursor: pointer; transition: all .15s; white-space: nowrap;
+        text-transform: uppercase;
+      }
+      .filter-btn:hover { background: var(--off); border-color: var(--light); color: var(--black); }
+
+      /* ─── CARD ─── */
+      .card { background: var(--pure); border: 1px solid var(--ghost); overflow: hidden; }
+      .card-hd {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 18px 24px; border-bottom: 1px solid var(--ghost);
+      }
+      .card-hd-l { display: flex; align-items: center; gap: 12px; }
+      .card-icon-wrap {
+        width: 28px; height: 28px;
+        background: var(--off); border: 1px solid var(--ghost);
+        display: flex; align-items: center; justify-content: center; color: var(--black);
+      }
+      .card-title { font-size: 15px; font-weight: 700; color: var(--black); letter-spacing: -.01em; }
+      .card-sub-text { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+      .card-link {
+        font-size: 11px; color: var(--muted); text-decoration: none;
+        font-weight: 600; text-transform: uppercase; transition: color .15s;
+      }
+      .card-link:hover { color: var(--black); }
+      .card-bd { padding: 24px; }
+
+      /* ─── GRID LAYOUTS ─── */
+      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+      @media(max-width:768px) { .two-col { grid-template-columns: 1fr; } }
+      .dash-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+      @media(max-width:900px) { .dash-grid { grid-template-columns: 1fr; } }
+
+      /* ─── JOB CARDS ─── */
+      .job-list { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--ghost); }
+      .job-item {
+        display: flex; align-items: flex-start; gap: 16px;
+        padding: 20px 22px; border-bottom: 1px solid var(--ghost);
+        background: var(--pure); transition: background .15s; cursor: pointer;
+      }
+      .job-item:last-child { border-bottom: none; }
+      .job-item:hover { background: var(--off); }
+      .job-logo {
+        width: 38px; height: 38px; background: var(--black);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 15px; font-weight: 900; color: var(--white); flex-shrink: 0;
+      }
+      .job-info { flex: 1; min-width: 0; }
+      .job-title { font-size: 13.5px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+      .job-company { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+      .tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
+      .job-tag {
+        font-size: 10.5px; font-weight: 500; padding: 2px 8px;
+        border: 1px solid var(--light); color: var(--mid); background: var(--off);
+      }
+      .match-col { flex-shrink: 0; text-align: right; }
+      .match-num { font-size: 22px; font-weight: 900; color: var(--black); line-height: 1; }
+      .match-lbl { font-size: 9px; font-weight: 600; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+
+      /* ─── APP TABLE ─── */
+      .app-table { width: 100%; border-collapse: collapse; }
+      .app-table th {
+        font-size: 9.5px; font-weight: 600; text-transform: uppercase;
+        color: var(--muted); padding: 0 20px 12px; text-align: left;
+        border-bottom: 1px solid var(--ghost);
+      }
+      .app-table td {
+        padding: 16px 20px; border-bottom: 1px solid var(--ghost);
+        font-size: 13px; color: var(--mid); vertical-align: middle;
+      }
+      .app-table tr:last-child td { border-bottom: none; }
+      .app-table tbody tr:hover td { background: var(--off); }
+      .app-job-name { font-weight: 600; color: var(--black); font-size: 13.5px; }
+      .app-company-name { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+      /* ─── STATUS PILLS ─── */
+      .s-pill {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 10.5px; font-weight: 600; padding: 4px 10px;
+        text-transform: uppercase;
+      }
+      .s-pill::before { content: ''; width: 5px; height: 5px; background: currentColor; }
+      .s-approved { color: var(--black); background: var(--off); border: 1px solid var(--light); }
+      .s-pending  { color: var(--mid); background: var(--off); border: 1px solid var(--ghost); }
+      .s-review   { color: var(--dark); background: var(--ghost); border: 1px solid var(--light); }
+      .s-rejected { color: var(--muted); background: var(--off); border: 1px solid var(--ghost); text-decoration: line-through; text-decoration-color: var(--light); }
+
+      /* ─── PROFILE PAGE ─── */
+      .profile-banner {
+        background: var(--black); padding: 32px; margin-bottom: 20px;
+        display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+      }
+      .p-avatar {
+        width: 68px; height: 68px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 24px; font-weight: 900; color: var(--black); flex-shrink: 0;
+      }
+      .p-name { font-size: 22px; font-weight: 900; letter-spacing: -.03em; color: var(--white); }
+      .p-email { font-size: 12px; color: var(--subtle); margin-top: 4px; }
+      .p-tags { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+      .p-tag { font-size: 10px; font-weight: 600; padding: 3px 10px; border: 1px solid var(--mid); color: var(--muted); text-transform: uppercase; }
+      .p-tag-light { border-color: var(--subtle); color: var(--white); }
+      .p-right { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+      /* ─── FORM ─── */
+      .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      @media(max-width:520px) { .form-grid { grid-template-columns: 1fr; } }
+      .f-group { display: flex; flex-direction: column; gap: 7px; }
+      .f-label { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; }
+      .f-input {
+        height: 40px; padding: 0 13px;
+        background: var(--off); border: 1px solid var(--ghost);
+        font-family: 'DM Sans', sans-serif; font-size: 13.5px; color: var(--black);
+        outline: none; transition: all .18s;
+      }
+      .f-input:hover { border-color: var(--light); }
+      .f-input:focus { border-color: var(--black); background: var(--pure); }
+      .f-input::placeholder { color: var(--muted); }
+
+      /* ─── SKILL TAGS ─── */
+      .skill-wrap { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+      .skill-tag {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: var(--black); color: var(--white);
+        padding: 5px 12px; font-size: 11.5px; font-weight: 600;
+      }
+      .skill-tag.plain { background: var(--off); color: var(--mid); border: 1px solid var(--ghost); }
+
+      /* ─── PROGRESS ─── */
+      .prog-bar { height: 3px; background: var(--ghost); overflow: hidden; margin-top: 8px; }
+      .prog-fill { height: 100%; background: var(--black); transition: width .8s ease; }
+
+      /* ─── NOTIF ─── */
+      .notif-list { display: flex; flex-direction: column; }
+      .notif-row {
+        display: flex; align-items: flex-start; gap: 14px;
+        padding: 18px 0; border-bottom: 1px solid var(--ghost);
+      }
+      .notif-row:last-child { border-bottom: none; }
+      .ni-icon {
+        width: 32px; height: 32px; background: var(--off);
+        border: 1px solid var(--ghost);
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      }
+      .ni-text { font-size: 13px; color: var(--mid); line-height: 1.6; }
+      .ni-text strong { color: var(--black); font-weight: 600; }
+      .ni-time { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+      /* ─── TIMELINE ─── */
+      .tl { display: flex; flex-direction: column; }
+      .tl-row { display: flex; gap: 14px; padding-bottom: 20px; }
+      .tl-row:last-child { padding-bottom: 0; }
+      .tl-l { display: flex; flex-direction: column; align-items: center; }
+      .tl-dot-w {
+        width: 24px; height: 24px; background: var(--off); border: 1px solid var(--ghost);
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      }
+      .tl-connector { width: 1px; flex: 1; background: var(--ghost); margin-top: 5px; }
+      .tl-row:last-child .tl-connector { display: none; }
+      .tl-r { padding-top: 2px; flex: 1; }
+      .tl-rtitle { font-size: 13px; font-weight: 600; color: var(--black); margin-bottom: 2px; }
+      .tl-rdesc { font-size: 11px; color: var(--muted); }
+
+      /* ─── PASSWORD ─── */
+      .pw-card { max-width: 460px; }
+      .req-box { background: var(--off); border: 1px solid var(--ghost); padding: 14px; margin-top: 4px; }
+      .req-row {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 11.5px; color: var(--muted); margin-bottom: 7px;
+      }
+      .req-row:last-child { margin-bottom: 0; }
+      .req-check { color: var(--black); }
+      .req-pending { color: var(--ghost); }
+
+      /* ─── MOBILE ─── */
+      .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 150; }
+      @media(max-width:768px) {
+        .sidebar { transform: translateX(-100%); }
+        .sidebar.open { transform: translateX(0); }
+        .overlay.open { display: block; }
+        .main { margin-left: 0; }
+        .topnav { left: 0; }
+        .hamburger { display: flex; }
+        .search-bar { flex: 1; max-width: none; }
+        .page { padding: 24px 18px 48px; }
+        .stats-row { grid-template-columns: 1fr 1fr; gap: 1px; }
+        .stat-val { font-size: 34px; }
+        .dash-grid { grid-template-columns: 1fr; }
+      }
+      @media(max-width:400px) { .stats-row { grid-template-columns: 1fr; } }
+
+      ::-webkit-scrollbar { width: 4px; }
+      ::-webkit-scrollbar-track { background: var(--white); }
+      ::-webkit-scrollbar-thumb { background: var(--light); }
+      .divider { height: 1px; background: var(--ghost); margin: 24px 0; }
+    </style>
+  </head>
+  <body>
+
+  <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+  <!-- ─── SIDEBAR ─── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">IH</div>
+      <span class="logo-name">InternHub</span>
+      <span class="logo-pill">Beta</span>
+    </div>
+
+    <div class="nav-section-label">Main</div>
+    <button class="nav-item active" onclick="showPage('dashboard',this)">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Overview
+    </button>
+    <button class="nav-item" onclick="showPage('jobs',this)">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14"/><path stroke-linecap="square" d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+      Job Recommendations
+      <span class="n-badge n-mid">6</span>
+    </button>
+    <button class="nav-item" onclick="showPage('applications',this)">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="square" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>
+      My Applications
+      <span class="n-badge n-dark">2</span>
+    </button>
+
+    <div class="nav-section-label">Updates</div>
+    <button class="nav-item" onclick="showPage('notifications',this)">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M15 17H9m6 0a3 3 0 01-6 0m6 0H5.5A1.5 1.5 0 014 15.5v-.545A2 2 0 015.083 13.2L6 12V8a6 6 0 0112 0v4l.917 1.2A2 2 0 0120 14.955v.545A1.5 1.5 0 0118.5 17H15z"/></svg>
+      Notifications
+      <span class="n-badge n-mid">3</span>
+    </button>
+
+    <!-- ─── FOOTER WITH POPUP ─── -->
+    <div class="sidebar-footer">
+
+      <!-- Popup slides up on hover -->
+      <div class="profile-popup" id="profile-popup">
+        <button class="popup-item" onclick="showPage('profile', null); markPopupActive('profile')">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          My Profile
+        </button>
+        <button class="popup-item" onclick="showPage('password', null); markPopupActive('password')">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10"/><path stroke-linecap="square" d="M8 11V7a4 4 0 018 0v4"/></svg>
+          Reset Password
+        </button>
+        <button class="popup-item danger" onclick="handleLogout()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          Logout
+        </button>
+      </div>
+
+      <!-- User tile (hover trigger) -->
+      <div class="user-tile">
+        <div class="u-avatar">
+          <img src="{{ user.profile_url }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Profile Picture">
+        </div>
+        <div>
+          <div class="u-name">{{ user.full_name }}</div>
+          <div class="u-role">CS · 3RD YEAR</div>
+        </div>
+        <svg class="u-chevron" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" d="M5 15l7-7 7 7"/>
+        </svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ─── TOP NAV ─── -->
+  <header class="topnav">
+    <button class="icon-btn hamburger" onclick="toggleSidebar()">
+      <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="square" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <div class="search-bar">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" placeholder="Search jobs, skills, applications…">
+    </div>
+    <div class="topnav-right">
+      <button class="icon-btn" onclick="showPage('notifications', document.querySelectorAll('.nav-item')[3])">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M15 17H9m6 0a3 3 0 01-6 0m6 0H5.5A1.5 1.5 0 014 15.5v-.545A2 2 0 015.083 13.2L6 12V8a6 6 0 0112 0v4l.917 1.2A2 2 0 0120 14.955v.545A1.5 1.5 0 0118.5 17H15z"/></svg>
+        <span class="notif-dot"></span>
+      </button>
+      <button class="btn btn-dark" onclick="showPage('jobs', document.querySelectorAll('.nav-item')[1])">
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        Browse Jobs
+      </button>
+      <div class="u-avatar" style="width:30px;height:30px;font-size:11px;background:var(--black);color:var(--white);cursor:pointer;font-weight:900">
+          <img src="{{ user.profile_url }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Profile Picture">
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ══ OVERVIEW ══ -->
+    <div class="page active" id="page-dashboard">
+      <div class="ph">
+        <div>
+          <h1 class="ph-title">Student Dashboard</h1>
+          <p class="ph-sub" id="dash-date">Loading…</p>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-top"><span class="stat-lbl">Matched Jobs</span><span class="stat-pill pill-dark">+2 New</span></div>
+          <div class="stat-val">6</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><span class="stat-lbl">Applications</span><span class="stat-pill pill-outline">+5%</span></div>
+          <div class="stat-val">4</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><span class="stat-lbl">Profile Health</span><span class="stat-pill pill-ghost">Stable</span></div>
+          <div class="stat-val">99.9%</div>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="card">
+          <div class="card-hd">
+            <div class="card-hd-l">
+              <div class="card-icon-wrap"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></div>
+              <div><div class="card-title">AI Job Recommendations</div><div class="card-sub-text">Based on your uploaded CV</div></div>
+            </div>
+            <a class="card-link" href="#" onclick="showPage('jobs',document.querySelectorAll('.nav-item')[1]);return false">View All →</a>
+          </div>
+          <div class="job-list" style="border:none;border-top:1px solid var(--ghost)">
+            <div class="job-item">
+              <div class="job-logo">G</div>
+              <div class="job-info">
+                <div class="job-title">Frontend Developer Intern</div>
+                <div class="job-company">Google India · Remote</div>
+                <div class="tag-row"><span class="job-tag">React</span><span class="job-tag">JavaScript</span><span class="job-tag">CSS</span></div>
+              </div>
+              <div class="match-col"><div class="match-num">94%</div><div class="match-lbl">Match</div></div>
+            </div>
+            <div class="job-item">
+              <div class="job-logo">M</div>
+              <div class="job-info">
+                <div class="job-title">ML Engineer Intern</div>
+                <div class="job-company">Microsoft · Hybrid</div>
+                <div class="tag-row"><span class="job-tag">Python</span><span class="job-tag">ML</span><span class="job-tag">TensorFlow</span></div>
+              </div>
+              <div class="match-col"><div class="match-num">87%</div><div class="match-lbl">Match</div></div>
+            </div>
+            <div class="job-item">
+              <div class="job-logo">A</div>
+              <div class="job-info">
+                <div class="job-title">Backend Developer Intern</div>
+                <div class="job-company">Amazon · Bangalore</div>
+                <div class="tag-row"><span class="job-tag">Django</span><span class="job-tag">Python</span><span class="job-tag">REST API</span></div>
+              </div>
+              <div class="match-col"><div class="match-num">82%</div><div class="match-lbl">Match</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-hd">
+              <div class="card-hd-l">
+                <div class="card-icon-wrap"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+                <div class="card-title">Top Skills</div>
+              </div>
+              <a class="card-link" href="#" onclick="showPage('profile',null);markPopupActive('profile');return false">Edit →</a>
+            </div>
+            <div class="card-bd" style="padding-top:18px">
+              <div style="display:flex;flex-direction:column;gap:13px">
+                <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px"><span style="font-weight:500;color:var(--black)">Python</span><span style="font-size:10.5px;color:var(--muted)">95%</span></div><div class="prog-bar"><div class="prog-fill" style="width:95%"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px"><span style="font-weight:500;color:var(--black)">React.js</span><span style="font-size:10.5px;color:var(--muted)">82%</span></div><div class="prog-bar"><div class="prog-fill" style="width:82%"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px"><span style="font-weight:500;color:var(--black)">Django</span><span style="font-size:10.5px;color:var(--muted)">78%</span></div><div class="prog-bar"><div class="prog-fill" style="width:78%"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px"><span style="font-weight:500;color:var(--black)">Machine Learning</span><span style="font-size:10.5px;color:var(--muted)">65%</span></div><div class="prog-bar"><div class="prog-fill" style="width:65%"></div></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-hd">
+              <div class="card-hd-l">
+                <div class="card-icon-wrap"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg></div>
+                <div class="card-title">Recent Activity</div>
+              </div>
+            </div>
+            <div class="card-bd">
+              <div class="tl">
+                <div class="tl-row">
+                  <div class="tl-l"><div class="tl-dot-w" style="background:var(--black)"><svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="var(--white)" stroke-width="3"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg></div><div class="tl-connector"></div></div>
+                  <div class="tl-r"><div class="tl-rtitle">Application Approved</div><div class="tl-rdesc">TCS — Data Analyst Intern · 2h ago</div></div>
+                </div>
+                <div class="tl-row">
+                  <div class="tl-l"><div class="tl-dot-w"><svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2.5"><rect x="2" y="7" width="20" height="14"/></svg></div><div class="tl-connector"></div></div>
+                  <div class="tl-r"><div class="tl-rtitle">New Job Matched</div><div class="tl-rdesc">Google Frontend Intern · 5h ago</div></div>
+                </div>
+                <div class="tl-row">
+                  <div class="tl-l"><div class="tl-dot-w"><svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="var(--muted)" stroke-width="2.5"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg></div></div>
+                  <div class="tl-r"><div class="tl-rtitle">Applied to Microsoft</div><div class="tl-rdesc">ML Engineer Intern · 1 day ago</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ JOBS ══ -->
+    <div class="page" id="page-jobs">
+      <div class="ph">
+        <div><h1 class="ph-title">Job Recommendations</h1><p class="ph-sub">AI-matched roles extracted from your CV skills</p></div>
+      </div>
+      <div class="tabs">
+        <button class="tab active">All Jobs <span class="tab-count">6</span></button>
+        <button class="tab">High Match</button>
+        <button class="tab">Applied</button>
+      </div>
+      <div class="sf-bar">
+        <div class="sf-search">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" placeholder="Search jobs by title, company, or skill…">
+        </div>
+        <button class="filter-btn"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M3 4h18M7 8h10M11 12h2"/></svg>Filter</button>
+      </div>
+      <div class="job-list">
+        <div class="job-item"><div class="job-logo">G</div><div class="job-info"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="job-title">Frontend Developer Intern</div><span style="font-size:9.5px;font-weight:700;padding:2px 8px;background:var(--black);color:var(--white);text-transform:uppercase">Top Match</span></div><div class="job-company">Google India · Remote · 3–6 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">React</span><span class="job-tag">JavaScript</span><span class="job-tag">CSS</span><span class="job-tag">Git</span></div></div><div class="match-col"><div class="match-num">94%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
+        <div class="job-item"><div class="job-logo">M</div><div class="job-info"><div class="job-title">ML Engineer Intern</div><div class="job-company">Microsoft · Hybrid · 6 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">Python</span><span class="job-tag">Machine Learning</span><span class="job-tag">TensorFlow</span><span class="job-tag">Pandas</span></div></div><div class="match-col"><div class="match-num">87%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
+        <div class="job-item"><div class="job-logo">A</div><div class="job-info"><div class="job-title">Backend Developer Intern</div><div class="job-company">Amazon · Bangalore · 4–6 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">Django</span><span class="job-tag">Python</span><span class="job-tag">REST API</span><span class="job-tag">PostgreSQL</span></div></div><div class="match-col"><div class="match-num">82%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
+        <div class="job-item"><div class="job-logo">I</div><div class="job-info"><div class="job-title">Data Science Intern</div><div class="job-company">Infosys · Chennai · 3 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">Python</span><span class="job-tag">NumPy</span><span class="job-tag">Data Analysis</span><span class="job-tag">SQL</span></div></div><div class="match-col"><div class="match-num">79%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
+        <div class="job-item"><div class="job-logo">W</div><div class="job-info"><div class="job-title">Full Stack Developer Intern</div><div class="job-company">Wipro · Hyderabad · 6 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">React</span><span class="job-tag">Node.js</span><span class="job-tag">MongoDB</span><span class="job-tag">Express</span></div></div><div class="match-col"><div class="match-num">74%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
+        <div class="job-item"><div class="job-logo">T</div><div class="job-info"><div class="job-title">Software Engineer Intern</div><div class="job-company">TCS · Mumbai · 3–6 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">Java</span><span class="job-tag">Spring Boot</span><span class="job-tag">SQL</span><span class="job-tag">Git</span></div></div><div class="match-col"><div class="match-num">68%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
+      </div>
+    </div>
+
+    <!-- ══ APPLICATIONS ══ -->
+    <div class="page" id="page-applications">
+      <div class="ph">
+        <div><h1 class="ph-title">My Applications</h1><p class="ph-sub">Track the HR approval status of every application</p></div>
+      </div>
+      <div class="tabs">
+        <button class="tab active">All <span class="tab-count">4</span></button>
+        <button class="tab">Pending</button>
+        <button class="tab">Approved</button>
+      </div>
+      <div class="card">
+        <div style="overflow-x:auto">
+          <table class="app-table">
+            <thead><tr><th>Position</th><th>Applied On</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td><div class="app-job-name">Data Analyst Intern</div><div class="app-company-name">TCS · Mumbai</div></td><td style="font-size:12px">Jan 18, 2025</td><td><span class="s-pill s-approved">Approved</span></td><td><button class="btn btn-outline" style="height:30px;font-size:11px;padding:0 14px">View Letter</button></td></tr>
+              <tr><td><div class="app-job-name">ML Engineer Intern</div><div class="app-company-name">Microsoft · Hybrid</div></td><td style="font-size:12px">Jan 22, 2025</td><td><span class="s-pill s-review">Under Review</span></td><td><button class="btn btn-ghost" style="height:30px;font-size:11px;padding:0 14px">Details</button></td></tr>
+              <tr><td><div class="app-job-name">Frontend Developer Intern</div><div class="app-company-name">Infosys · Chennai</div></td><td style="font-size:12px">Feb 01, 2025</td><td><span class="s-pill s-pending">Pending</span></td><td><button class="btn btn-ghost" style="height:30px;font-size:11px;padding:0 14px">Details</button></td></tr>
+              <tr><td><div class="app-job-name">Backend Developer Intern</div><div class="app-company-name">Wipro · Hyderabad</div></td><td style="font-size:12px">Dec 10, 2024</td><td><span class="s-pill s-rejected">Rejected</span></td><td><button class="btn btn-ghost" style="height:30px;font-size:11px;padding:0 14px">Feedback</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PROFILE ══ -->
+    <div class="page" id="page-profile">
+      <div class="ph"><h1 class="ph-title">My Profile</h1></div>
+      <div class="profile-banner">
+        <div class="p-avatar">
+          <img src="{{ user.profile_url }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Profile Picture">
+        </div>
+        <div>
+          <div class="p-name">{{ user.full_name }}</div>
+          <div class="p-email">{{ user.Email }}</div>
+          <div class="p-tags">
+            <span class="p-tag p-tag-light">{{ user.course }}</span>
+            {% if user.cv_url %}<span class="p-tag p-tag-light">CV Uploaded ✓</span>{% else %}<span class="p-tag">CV Not Found</span>{% endif %}
+          </div>
+        </div>
+        <div class="p-right">
+          <button class="btn" style="background:transparent;color:var(--muted);border:1px solid var(--mid);font-size:11px">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            Re-upload CV
+          </button>
+          <button type="submit" class="btn btn-outline" style="border-color:var(--white);background:var(--white);color:var(--black)">Save Changes</button>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-hd"><div class="card-hd-l"><div class="card-icon-wrap"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div><div class="card-title">Personal Information</div></div></div>
+          <div class="card-bd">
+            <div class="form-grid">
+              <div class="f-group"><label class="f-label">Full Name</label><input class="f-input" type="text" value="{{ user.full_name }}"></div>
+              <div class="f-group"><label class="f-label">Email Address</label><input class="f-input" type="email" value="{{ user.Email }}"></div>
+              <div class="f-group"><label class="f-label">Phone Number</label><input class="f-input" type="tel" value="{{ user.phoneno }}"></div>
+              <div class="f-group"><label class="f-label">Course</label><input class="f-input" type="text" value="{{ user.course }}"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-hd-l"><div class="card-icon-wrap"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div><div class="card-title">AI-Extracted Skills</div></div></div>
+          <div class="card-bd">
+            <p style="font-size:10.5px;color:var(--muted)">Auto-detected from your uploaded CV</p>
+            <div class="skill-wrap">
+              <span class="skill-tag">Python</span><span class="skill-tag">React.js</span><span class="skill-tag">Django</span>
+              <span class="skill-tag">Machine Learning</span><span class="skill-tag">PostgreSQL</span><span class="skill-tag">REST API</span>
+              <span class="skill-tag plain">Git</span><span class="skill-tag plain">NumPy</span><span class="skill-tag plain">Pandas</span><span class="skill-tag plain">JavaScript</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ NOTIFICATIONS ══ -->
+    <div class="page" id="page-notifications">
+      <div class="ph">
+        <div><h1 class="ph-title">Notifications</h1><p class="ph-sub">3 unread messages</p></div>
+        <button class="btn btn-outline" style="font-size:11px;text-transform:uppercase">Mark all read</button>
+      </div>
+      <div class="card">
+        <div class="card-bd" style="padding:0 24px">
+          <div class="notif-list">
+            <div class="notif-row"><div class="ni-icon" style="background:var(--black)"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--white)" stroke-width="2.5"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg></div><div><div class="ni-text"><strong>Application Approved!</strong> Your application for <strong>Data Analyst Intern</strong> at TCS has been approved.</div><div class="ni-time">2 hours ago</div></div></div>
+            <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><rect x="2" y="7" width="20" height="14"/></svg></div><div><div class="ni-text"><strong>2 New Jobs Matched</strong> — AI found new roles: Frontend Developer at Google and ML Engineer at Microsoft.</div><div class="ni-time">5 hours ago</div></div></div>
+            <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><path stroke-linecap="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><div><div class="ni-text"><strong>Under Review</strong> — Microsoft is reviewing your ML Engineer Intern application.</div><div class="ni-time">1 day ago</div></div></div>
+            <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--muted)" stroke-width="2"><path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div><div><div class="ni-text">Welcome to <strong>InternHub!</strong> Registration complete. Start exploring AI-matched jobs.</div><div class="ni-time">3 days ago</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RESET PASSWORD ══ -->
+  <!-- ═════════ RESET PASSWORD PAGE ═════════ -->
+<div class="page" id="page-password">
+
+  <div class="ph">
+    <div>
+      <h1 class="ph-title">Reset Password</h1>
+      <p class="ph-sub">Update your account password</p>
+    </div>
+  </div>
+
+  <div class="pw-card">
+    <div class="card">
+
+      <div class="card-hd">
+        <div class="card-hd-l">
+          <div class="card-icon-wrap">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="11" width="14" height="10"/>
+              <path stroke-linecap="square" d="M8 11V7a4 4 0 018 0v4"/>
+            </svg>
+          </div>
+          <div class="card-title">Change Password</div>
+        </div>
+      </div>
+
+    <div id="passwordMessage"></div>
+
+    <div class="card-bd">
+
+      <form id="passwordForm" method="POST">
+        {% csrf_token %}
+
+        <div style="display:flex;flex-direction:column;gap:14px">
+
+          <!-- Current Password -->
+          <div class="f-group">
+            <label class="f-label">Current Password</label>
+            <input class="f-input" type="password" name="current_password"
+                  placeholder="Enter current password" required>
+          </div>
+
+          <!-- New Password -->
+          <div class="f-group">
+            <label class="f-label">New Password</label>
+            <input class="f-input" type="password" name="new_password"
+                  placeholder="Min. 8 characters" required>
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="f-group">
+            <label class="f-label">Confirm New Password</label>
+            <input class="f-input" type="password" name="confirm_password"
+                  placeholder="Re-enter new password" required>
+          </div>
+
+          <!-- Password Requirements -->
+          <div class="req-box">
+            <div style="font-size:9.5px;font-weight:700;color:var(--muted);
+                        margin-bottom:10px;text-transform:uppercase;letter-spacing:.08em">
+              Requirements
+            </div>
+            <div class="req-row">✓ At least 8 characters</div>
+            <div class="req-row">✓ One uppercase letter</div>
+            <div class="req-row">○ One special character</div>
+          </div>
+
+          <!-- Submit Button -->
+          <div style="display:flex;gap:10px;margin-top:4px">
+            <button type="submit" class="btn btn-dark" style="flex:2;font-size:11px">
+              Update Password
+            </button>
+          </div>
+
+        </div>
+      </form>
+    </div> 
+    <script>
+          document.getElementById("passwordForm").addEventListener("submit", function(e){
+              e.preventDefault();
+
+              let form = document.getElementById("passwordForm");
+              let formData = new FormData(form);
+              let msgBox = document.getElementById("passwordMessage");
+
+              fetch("{% url 'change_password' %}", {
+                  method: "POST",
+                  headers: {
+                      "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+                  },
+                  body: formData
+              })
+              .then(response => response.json()).then(data => {
+
+                  if(data.status === "success"){
+                      msgBox.innerHTML =
+                      `<div style="background:#e7ffe7;color:#0a7a0a;padding:10px;border-radius:6px;text-align:center;margin-bottom:12px">
+                          ${data.message}
+                      </div>`;
+                      form.reset();
+                  }
+                  else{
+                      msgBox.innerHTML =
+                      `<div style="background:#ffe6e6;color:#d10000;padding:10px;border-radius:6px;text-align:center;margin-bottom:12px">
+                          ${data.message}
+                      </div>`;
+                  }
+
+              })
+              .catch(error => console.log("Error:", error));
+          });
+    </script>   
+
+    </div>
+  </div>
+</div>
+
+
+
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const d = new Date();
+      const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const suf = n => n + (n%10==1&&n!==11?'st':n%10==2&&n!==12?'nd':n%10==3&&n!==13?'rd':'th');
+      const el = document.getElementById('dash-date');
+      if (el) el.textContent = days[d.getDay()] + ', ' + months[d.getMonth()] + ' ' + suf(d.getDate()) + ' · All systems operational';
+    });
+
+    function showPage(name, btn) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      // clear popup item highlights
+      document.querySelectorAll('.popup-item').forEach(p => p.classList.remove('active-page'));
+      var page = document.getElementById('page-' + name);
+      if (page) page.classList.add('active');
+      if (btn) btn.classList.add('active');
+      if (window.innerWidth <= 768) closeSidebar();
+      window.scrollTo(0, 0);
+    }
+
+    // Highlight the popup item when a popup-routed page is active
+    function markPopupActive(name) {
+      document.querySelectorAll('.popup-item').forEach(p => p.classList.remove('active-page'));
+      var map = { profile: 0, password: 1 };
+      var items = document.querySelectorAll('.popup-item');
+      if (map[name] !== undefined && items[map[name]]) {
+        items[map[name]].classList.add('active-page');
+      }
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('overlay').classList.toggle('open');
+    }
+
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('overlay').classList.remove('open');
+    }
+
+    function applyJob(btn) {
+      btn.textContent = 'Applied ✓';
+      btn.style.background = 'var(--mid)';
+      btn.disabled = true;
+    }
+
+    function handleLogout() {
+      if (confirm('Are you sure you want to logout?')) {
+        window.location.href = '{% url "logout" %}';
+      }
+    }
+  </script>
+  </body>
+  </html>

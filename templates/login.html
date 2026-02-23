@@ -1,0 +1,394 @@
+{% load static %}
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InternHub — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:      #0a0a0a;
+      --near-black: #111111;
+      --dark:       #1c1c1c;
+      --mid:        #3d3d3d;
+      --subtle:     #6b6b6b;
+      --muted:      #a0a0a0;
+      --light:      #d4d4d4;
+      --ghost:      #e8e8e8;
+      --off:        #f5f5f5;
+      --white:      #fafafa;
+      --pure:       #ffffff;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--white);
+      color: var(--black);
+      overflow-x: hidden;
+    }
+
+    .wrapper {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── LEFT PANEL ── */
+    .left-panel {
+      background: var(--black);
+      display: flex; flex-direction: column;
+      padding: 48px; position: relative; overflow: hidden;
+    }
+    .left-panel::before {
+      content: ''; position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size: 48px 48px; pointer-events: none;
+    }
+    .left-panel::after {
+      content: ''; position: absolute;
+      bottom: -120px; right: -120px;
+      width: 420px; height: 420px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.07); pointer-events: none;
+    }
+    .deco-ring {
+      position: absolute; bottom: 20px; right: 20px;
+      width: 280px; height: 280px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.05); pointer-events: none;
+    }
+    .left-logo {
+      display: flex; align-items: center; gap: 10px;
+      position: relative; z-index: 1;
+      animation: fadeUp .5s ease both;
+    }
+    .logo-mark {
+      width: 32px; height: 32px; background: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: var(--black); flex-shrink: 0;
+    }
+    .logo-name { font-size: 17px; font-weight: 700; color: var(--white); letter-spacing: -.02em; }
+    .left-content {
+      margin-top: auto; margin-bottom: auto;
+      position: relative; z-index: 1; padding-top: 40px;
+    }
+    .left-tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      letter-spacing: .08em; text-transform: uppercase; margin-bottom: 20px;
+      animation: fadeUp .5s .1s ease both;
+    }
+    .left-tag::before { content: ''; width: 20px; height: 1px; background: var(--subtle); }
+    .left-headline {
+      font-size: clamp(32px, 3.5vw, 48px); font-weight: 800; color: var(--white);
+      letter-spacing: -.04em; line-height: 1.1; margin-bottom: 20px;
+      animation: fadeUp .5s .2s ease both;
+    }
+    .left-headline span { color: var(--muted); }
+    .left-desc {
+      font-size: 14px; color: var(--subtle); line-height: 1.7;
+      max-width: 340px; margin-bottom: 40px;
+      animation: fadeUp .5s .3s ease both;
+    }
+    .stats-strip { display: flex; gap: 32px; animation: fadeUp .5s .4s ease both; }
+    .stat-num { font-size: 22px; font-weight: 800; color: var(--white); letter-spacing: -.03em; line-height: 1; }
+    .stat-label { font-size: 11px; color: var(--subtle); margin-top: 4px; }
+    .left-footer {
+      position: relative; z-index: 1; font-size: 11.5px; color: var(--subtle);
+      animation: fadeUp .5s .5s ease both;
+    }
+    .left-footer a { color: var(--muted); text-decoration: none; }
+    .left-footer a:hover { color: var(--white); }
+
+    /* ── RIGHT PANEL ── */
+    .right-panel {
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      padding: 48px 40px; background: var(--pure); position: relative;
+    }
+    .right-panel::before {
+      content: ''; position: absolute; top: 0; right: 0;
+      width: 1px; height: 100%; background: var(--ghost);
+    }
+    .form-box { width: 100%; max-width: 380px; }
+    .form-top { margin-bottom: 36px; animation: fadeUp .5s .15s ease both; }
+    .form-greeting {
+      font-size: 11px; font-weight: 600; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+    }
+    .form-title {
+      font-size: 28px; font-weight: 800; color: var(--black);
+      letter-spacing: -.04em; line-height: 1.1;
+    }
+    .form-sub { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+
+    /* Social */
+    .social-btns {
+      display: flex; flex-direction: column; gap: 10px;
+      margin-bottom: 24px; animation: fadeUp .5s .2s ease both;
+    }
+    .social-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      height: 44px; border: 1px solid var(--ghost); background: var(--pure);
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px; font-weight: 600; color: var(--black);
+      transition: all .2s; width: 100%; position: relative; overflow: hidden;
+    }
+    .social-btn::after {
+      content: ''; position: absolute; inset: 0; background: var(--black);
+      transform: scaleX(0); transform-origin: left; transition: transform .25s ease; z-index: 0;
+    }
+    .social-btn:hover::after { transform: scaleX(1); }
+    .social-btn:hover { color: var(--white); border-color: var(--black); }
+    .social-btn:hover svg path,
+    .social-btn:hover svg rect,
+    .social-btn:hover svg circle { fill: var(--white) !important; }
+    .social-btn span, .social-btn svg { position: relative; z-index: 1; }
+
+    .social-btns a,
+    .social-btns a:hover,
+    .social-btns a:focus,
+    .social-btns a:active {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    /* Divider */
+    .divider {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
+      animation: fadeUp .5s .25s ease both;
+    }
+    .divider-line { flex: 1; height: 1px; background: var(--ghost); }
+    .divider-text {
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      letter-spacing: .08em; text-transform: uppercase; white-space: nowrap;
+    }
+
+    /* Form fields */
+    .email-form { display: flex; flex-direction: column; gap: 14px; animation: fadeUp .5s .3s ease both; }
+    .f-group { display: flex; flex-direction: column; gap: 6px; }
+    .f-label { font-size: 11px; font-weight: 700; color: var(--mid); letter-spacing: .05em; text-transform: uppercase; }
+    .f-input-wrap { position: relative; }
+    .f-input {
+      width: 100%; height: 44px; padding: 0 14px;
+      background: var(--off); border: 1.5px solid var(--ghost);
+      font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--black);
+      outline: none; transition: all .2s;
+    }
+    .f-input:hover { border-color: var(--light); }
+    .f-input:focus { border-color: var(--black); background: var(--pure); box-shadow: 0 0 0 3px rgba(10,10,10,.06); }
+    .f-input::placeholder { color: var(--muted); }
+
+    /* ── FORGOT PASSWORD LINK ── */
+    .pw-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+    .forgot-link {
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      text-decoration: none; transition: color .15s;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .forgot-link:hover { color: var(--black); }
+
+    /* Error box */
+    .error-box {
+      background: var(--off); border: 1px solid var(--light);
+      color: var(--mid); padding: 10px 14px;
+      font-size: 13px; text-align: center;
+      border-left: 3px solid var(--black);
+    }
+
+    /* Submit */
+    .submit-btn {
+      width: 100%; height: 46px; background: var(--black); color: var(--white);
+      border: none; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      position: relative; overflow: hidden; margin-top: 4px;
+    }
+    .submit-btn::after {
+      content: ''; position: absolute; inset: 0; background: var(--mid);
+      transform: scaleX(0); transform-origin: left; transition: transform .3s ease;
+    }
+    .submit-btn:hover::after { transform: scaleX(1); }
+    .submit-btn span { position: relative; z-index: 1; }
+    .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+    .submit-btn:active { transform: translateY(0); }
+
+    .form-footer {
+      margin-top: 28px; text-align: center; font-size: 13px; color: var(--muted);
+      animation: fadeUp .5s .4s ease both;
+    }
+    .form-footer a {
+      color: var(--black); font-weight: 700; text-decoration: none;
+      border-bottom: 1px solid var(--light); transition: border-color .15s;
+    }
+    .form-footer a:hover { border-color: var(--black); }
+
+    .terms-note {
+      margin-top: 20px; text-align: center; font-size: 11.5px; color: var(--muted);
+      line-height: 1.6; animation: fadeUp .5s .45s ease both;
+    }
+    .terms-note a { color: var(--subtle); text-decoration: underline; text-underline-offset: 2px; }
+    .terms-note a:hover { color: var(--black); }
+
+    .corner-nav {
+      position: absolute; top: 28px; right: 32px;
+      font-size: 13px; color: var(--muted); animation: fadeUp .5s .1s ease both;
+    }
+    .corner-nav a {
+      color: var(--black); font-weight: 700; text-decoration: none;
+      border-bottom: 1px solid var(--ghost); transition: border-color .15s;
+    }
+    .corner-nav a:hover { border-color: var(--black); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media(max-width: 768px) {
+      .wrapper { grid-template-columns: 1fr; }
+      .left-panel { display: none; }
+      .right-panel { padding: 40px 24px; min-height: 100vh; justify-content: center; }
+      .corner-nav { top: 20px; right: 20px; }
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--white); }
+    ::-webkit-scrollbar-thumb { background: var(--light); }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="left-panel">
+    <div class="deco-ring"></div>
+    <div class="left-logo">
+      <div class="logo-mark">IH</div>
+      <span class="logo-name">InternHub</span>
+    </div>
+    <div class="left-content">
+      <div class="left-tag">AI-Powered Platform</div>
+      <h1 class="left-headline">Land your<br>dream <span>internship.</span></h1>
+      <p class="left-desc">Upload your CV once. Our AI matches you with the right internships, tracks your applications, and keeps you ahead of deadlines.</p>
+      <div class="stats-strip">
+        <div><div class="stat-num">2,400+</div><div class="stat-label">Active Listings</div></div>
+        <div><div class="stat-num">94%</div><div class="stat-label">Match Accuracy</div></div>
+        <div><div class="stat-num">12k+</div><div class="stat-label">Students Placed</div></div>
+      </div>
+    </div>
+    <div class="left-footer">© 2026 InternHub · <a href="#">Privacy</a> · <a href="#">Terms</a></div>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="right-panel">
+    <div class="corner-nav">No account? <a href="{% url 'reg' %}">Sign up</a></div>
+
+    <div class="form-box">
+      <div class="form-top">
+        <div class="form-greeting">Welcome back</div>
+        <h2 class="form-title">Sign in to<br>InternHub</h2>
+        <p class="form-sub">Continue where you left off.</p>
+      </div>
+
+      <!-- Google -->
+      <div class="social-btns">
+        <a href="{% provider_login_url 'google' %}">
+        <button class="social-btn" onclick="handleSocial('Google')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#0a0a0a"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#3d3d3d"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#6b6b6b"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#a0a0a0"/>
+          </svg>
+          <span >Continue with Google</span>
+        </button>
+        </a>
+      </div>
+
+
+      <!-- Divider -->
+      <div class="divider">
+        <div class="divider-line"></div>
+        <span class="divider-text">or login with email</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- Email Form -->
+      <form method="POST" action="{% url 'login_user' %}" class="email-form">
+        {% csrf_token %}
+
+        {% if error %}
+        <div class="error-box">{{ error }}</div>
+        {% endif %}
+
+        <div class="f-group">
+          <label class="f-label">Email Address</label>
+          <div class="f-input-wrap">
+            <input class="f-input" type="email" name="email" placeholder="you@university.edu" required>
+          </div>
+        </div>
+
+        <div class="f-group">
+          <div class="pw-row">
+            <label class="f-label">Password</label>
+            <a href="{% url 'forgot_password' %}" class="forgot-link">
+              Forgot password?
+              <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+          <div class="f-input-wrap">
+            <input class="f-input" type="password" name="password" placeholder="Enter your password" style="padding-right:44px" required>
+            <button type="button" style="position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);padding:0;display:flex;transition:color .15s" onclick="togglePw(this)" tabindex="-1">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn">
+          <span>Sign in</span>
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="position:relative;z-index:1"><path stroke-linecap="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </form>
+
+      <div class="form-footer">
+        New to InternHub? <a href="{% url 'reg' %}">Create an account</a>
+      </div>
+      <div class="terms-note">
+        By signing in you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function togglePw(btn) {
+    const input = btn.previousElementSibling;
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+    btn.querySelector('svg').innerHTML = isHidden
+      ? '<path stroke-linecap="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>'
+      : '<path stroke-linecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+  }
+
+  function handleSocial(provider) {
+    const btns = document.querySelectorAll('.social-btn');
+    btns.forEach(b => { b.disabled = true; b.style.opacity = '.5'; });
+    const clicked = Array.from(btns).find(b => b.innerText.includes(provider));
+    if (clicked) { clicked.style.opacity = '1'; clicked.querySelector('span').textContent = 'Connecting…'; }
+    setTimeout(() => {
+      btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+      if (clicked) clicked.querySelector('span').textContent = 'Continue with ' + provider;
+    }, 1800);
+  }
+</script>
+</body>
+</html>
