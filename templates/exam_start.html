@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ title }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f7f7f5; --white: #ffffff; --text: #111111; --muted: #888888;
+      --border: #e8e8e4; --green: #22c55e; --red: #ef4444; --tag-bg: #f0f0ec;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 40px; background: var(--white); border-bottom: 1px solid var(--border); }
+    .nav-logo { font-family: 'DM Sans', sans-serif; font-size: 20px; color: var(--text); }
+    .nav-badge { font-size: 12px; font-weight: 500; color: var(--muted); background: var(--tag-bg); border: 1px solid var(--border); border-radius: 100px; padding: 5px 14px; }
+    main { flex: 1; max-width: 720px; margin: 0 auto; width: 100%; padding: 56px 24px 80px; }
+    .greeting-label { font-size: 12px; font-weight: 500; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+    h1 { font-family: 'DM Sans', sans-serif; font-size: clamp(32px, 6vw, 52px); font-weight: 400; color: var(--text); line-height: 1.1; letter-spacing: -1px; }
+    .greeting-sub { margin-top: 10px; font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; }
+    .cards-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 36px 0 14px; }
+    .card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+    .card-label { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+    .card-value { font-family: 'DM Sans', sans-serif; font-size: 48px; color: var(--text); line-height: 1; letter-spacing: -2px; }
+    .card-delta { display: inline-flex; align-items: center; font-size: 12px; font-weight: 600; margin-left: 10px; vertical-align: middle; }
+    .delta-up { color: var(--green); } .delta-down { color: var(--red); }   
+    .chip-more { font-size: 10px; padding: 0 10px; border-radius: 100px; width: auto; }
+    .section { background: var(--white); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 14px; overflow: hidden; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--border); }
+    .section-title { display: flex; align-items: center; gap: 12px; font-weight: 600; font-size: 15px; color: var(--text); }
+    .section-icon { width: 34px; height: 34px; background: var(--text); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .section-link { font-size: 13px; color: var(--muted); font-weight: 500; }
+    .rule-item { display: flex; align-items: flex-start; gap: 14px; padding: 14px 24px; border-bottom: 1px solid var(--border); }
+    .rule-item:last-child { border-bottom: none; }
+    .rule-num { width: 24px; height: 24px; border-radius: 6px; background: var(--tag-bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--muted); flex-shrink: 0; margin-top: 1px; }
+    .rule-text { font-size: 14px; color: var(--text); line-height: 1.5; }
+    .rule-tag { display: inline-block; background: var(--tag-bg); border: 1px solid var(--border); border-radius: 100px; padding: 2px 10px; font-size: 11px; font-weight: 600; color: var(--muted); margin-left: 6px; vertical-align: middle; }
+    .start-wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 28px; flex-wrap: wrap; }
+    .start-note { font-size: 13px; color: var(--muted); }
+    .btn-start { display: inline-flex; align-items: center; gap: 8px; background: var(--text); color: #fff; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 14px; padding: 14px 32px; border-radius: 12px; border: none; cursor: pointer; text-decoration: none; transition: opacity 0.15s, transform 0.15s; }
+    .btn-start:hover { opacity: 0.82; transform: translateY(-1px); }
+    .status-bar { display: flex; align-items: center; gap: 20px; padding: 14px 40px; background: var(--white); border-top: 1px solid var(--border); flex-wrap: wrap; }
+    .status-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .dot-green { background: #22c55e; }
+    .status-view { margin-left: auto; font-size: 12px; color: var(--text); font-weight: 600; text-decoration: none; }
+    .status-view:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-logo">ExamPortal</div>
+    <div class="nav-badge">Internship Screening</div>
+  </nav>
+  <main>
+    <div class="greeting-label">Ready to begin</div>
+    <h1>{{ title }}</h1>
+    <div class="greeting-sub"><span class="status-dot"></span> All systems operational &nbsp;·&nbsp; Questions loaded from bank</div>
+
+    <div class="cards-row">
+      <div class="card">
+        <div class="card-label">Questions</div>
+        <div class="card-value">20 </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Pass Mark</div>
+        <div class="card-value">60% </div>
+        <div class="card-bar"><div class="card-bar-fill" style="width:60%"></div></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+        <div>
+          <div class="card-label">Time Limit</div>
+          <div style="font-family:'DM Sans',sans-serif;font-size:36px;letter-spacing:-1px;">20 mins</div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);max-width:240px;line-height:1.6;">Timer starts the moment you enter. Navigate freely between questions.</div>
+      </div>
+    </div>
+
+    <div class="section" style="margin-top:28px;">
+      <div class="section-header">
+        <div class="section-title"> Instructions</div>
+        <span class="section-link">6 rules</span>
+      </div>
+      <div class="rule-item"><div class="rule-num">1</div><div class="rule-text">Each question has exactly one correct answer <span class="rule-tag">MCQ</span></div></div>
+      <div class="rule-item"><div class="rule-num">2</div><div class="rule-text">Timer starts immediately upon entering the exam — no pause available</div></div>
+      <div class="rule-item"><div class="rule-num">3</div><div class="rule-text">Exam auto-submits when the 20-minute timer reaches zero <span class="rule-tag">auto</span></div></div>
+      <div class="rule-item"><div class="rule-num">4</div><div class="rule-text">Score of 60% or above required to pass this screening <span class="rule-tag">60%</span></div></div>
+    </div>
+
+    <div class="start-wrap">
+      <div class="start-note">⏱ Timer begins immediately on the next page</div>
+      <a href="{% url 'exam' %}" class="btn-start">
+        Begin Exam
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  </main>
+</body>
+</html>

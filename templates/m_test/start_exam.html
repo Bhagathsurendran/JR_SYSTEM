@@ -1,0 +1,446 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{{ title|default:"Coding Assessment" }} — ExamPortal</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f7f7f5;
+      --white: #ffffff;
+      --text: #111111;
+      --text2: #444444;
+      --muted: #888888;
+      --border: #e8e8e4;
+      --border2: #d4d4d0;
+      --tag-bg: #f0f0ec;
+      --green: #22c55e;
+      --green-bg: #f0fdf4;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --amber-bg: #fffbeb;
+      --radius: 16px;
+      --radius-sm: 8px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* NAV */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 40px; background: var(--white);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-left  { display: flex; align-items: center; gap: 14px; }
+    .nav-logo  { font-size: 20px; font-weight: 600; color: var(--text); text-decoration: none; letter-spacing: -0.4px; }
+    .nav-sep   { width: 1px; height: 18px; background: var(--border); }
+    .nav-badge {
+      font-size: 12px; font-weight: 500; color: var(--muted);
+      background: var(--tag-bg); border: 1px solid var(--border);
+      border-radius: 100px; padding: 5px 14px;
+    }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .nav-user  { font-size: 13px; color: var(--text2); font-weight: 500; display: flex; align-items: center; gap: 8px; }
+    .nav-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--text); color: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+
+    /* MAIN */
+    main { flex: 1; max-width: 720px; margin: 0 auto; width: 100%; padding: 56px 24px 80px; }
+    /* PAGE HEADER */
+    .greeting-label {
+      font-size: 12px; font-weight: 500; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      flex-shrink: 0; animation: blink 2.4s ease infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.75)} }
+    h1 {
+      font-size: clamp(32px, 6vw, 52px); font-weight: 400;
+      color: var(--text); line-height: 1.1; letter-spacing: -1px; margin-bottom: 0;
+    }
+    .greeting-sub {
+      margin-top: 10px; font-size: 14px; color: var(--muted);
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+
+    /* STAT CARDS */
+    .cards-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 36px 0 14px; }
+    .card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .card:hover { border-color: var(--border2); box-shadow: 0 2px 14px rgba(0,0,0,.06); }
+    .card-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+    }
+    .card-value {
+      font-size: 60px; font-weight: 400; color: var(--text);
+      line-height: 1; letter-spacing: -2px;
+    }
+    .card-note { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* pass bar */
+    .card-bar { height: 5px; background: var(--bg); border-radius: 100px; overflow: hidden; margin-top: 12px; }
+    .card-bar-fill { height: 100%; border-radius: 100px; background: var(--green); }
+
+    /* wide time card */
+    .card-wide {
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 20px; flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .card-wide-note { font-size: 13px; color: var(--muted); max-width: 240px; line-height: 1.6; }
+
+    /* NOTICE */
+    .notice {
+      display: flex; gap: 12px; align-items: flex-start;
+      background: var(--amber-bg); border: 1px solid #fde68a;
+      border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px;
+    }
+    .notice-icon { font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+    .notice-text { font-size: 13px; color: #92400e; line-height: 1.6; }
+    .notice-text strong { color: #78350f; }
+
+    /* SECTION / RULES */
+    .section {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 14px; overflow: hidden;
+    }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 24px; border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      display: flex; align-items: center; gap: 12px;
+      font-weight: 600; font-size: 15px; color: var(--text);
+    }
+    .section-icon {
+      width: 34px; height: 34px; background: var(--text);
+      border-radius: 10px; display: flex; align-items: center;
+      justify-content: center; font-size: 16px;
+    }
+    .section-count { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+    /* rule rows */
+    .rule-item {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 14px 24px; border-bottom: 1px solid var(--border);
+      transition: background .1s;
+    }
+    .rule-item:last-child { border-bottom: none; }
+    .rule-item:hover { background: var(--bg); }
+    .rule-num {
+      width: 24px; height: 24px; border-radius: 6px;
+      background: var(--tag-bg); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .rule-body { flex: 1; }
+    .rule-text { font-size: 14px; color: var(--text); line-height: 1.5; }
+    .rule-sub  { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+    .rule-tag {
+      display: inline-block; background: var(--tag-bg); border: 1px solid var(--border);
+      border-radius: 100px; padding: 2px 10px; font-size: 11px; font-weight: 600;
+      color: var(--muted); margin-left: 6px; vertical-align: middle;
+    }
+    .rule-tag.critical { background: #fef2f2; border-color: #fca5a5; color: var(--red); }
+    .rule-tag.warn     { background: var(--amber-bg); border-color: #fcd34d; color: var(--amber); }
+    .rule-tag.ok       { background: var(--green-bg); border-color: #86efac; color: #16a34a; }
+
+    /* marking scheme inside section */
+    .marking-row {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--border);
+    }
+    .marking-cell {
+      padding: 18px 24px; text-align: center;
+      border-right: 1px solid var(--border);
+    }
+    .marking-cell:last-child { border-right: none; }
+    .marking-val {
+      font-size: 28px; font-weight: 400;
+      line-height: 1; letter-spacing: -1px;
+    }
+    .marking-val.pos { color: var(--green); }
+    .marking-val.neg { color: var(--red); }
+    .marking-val.neu { color: var(--muted); }
+    .marking-lbl { font-size: 11px; color: var(--muted); margin-top: 5px; font-weight: 500; }
+
+    /* SECTIONS BREAKDOWN */
+    .section-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 13px 24px; border-bottom: 1px solid var(--border);
+    }
+    .section-row:last-child { border-bottom: none; }
+    .sec-badge {
+      width: 30px; height: 30px; border-radius: var(--radius-sm);
+      background: var(--tag-bg); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; color: var(--muted); flex-shrink: 0;
+    }
+    .sec-info { flex: 1; min-width: 0; }
+    .sec-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .sec-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .sec-pts  { font-size: 13px; font-weight: 600; color: var(--muted); flex-shrink: 0; }
+
+    /* AGREEMENT */
+    .agree-wrap {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 16px 24px; border-top: 1px solid var(--border); background: var(--bg);
+    }
+    .agree-checkbox { width: 16px; height: 16px; flex-shrink: 0; margin-top: 3px; accent-color: var(--text); cursor: pointer; }
+    .agree-label { font-size: 13px; color: var(--muted); line-height: 1.6; cursor: pointer; }
+    .agree-label a { color: var(--text2); text-decoration: underline; text-underline-offset: 2px; }
+
+    /* START ROW */
+    .start-wrap {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; margin-top: 28px; flex-wrap: wrap;
+    }
+    .start-note { font-size: 13px; color: var(--muted); }
+    .btn-start {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--text); color: #fff;
+      font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 14px;
+      padding: 14px 32px; border-radius: 12px; border: none; cursor: pointer;
+      text-decoration: none; transition: opacity .15s, transform .15s;
+      letter-spacing: -0.2px;
+    }
+    .btn-start:hover:not([aria-disabled="true"]) { opacity: .82; transform: translateY(-1px); }
+    .btn-start[aria-disabled="true"] {
+      background: #d4d4d0; color: #a0a09c; cursor: not-allowed; pointer-events: none;
+    }
+    .btn-start svg { flex-shrink: 0; transition: transform .15s; }
+    .btn-start:hover:not([aria-disabled="true"]) svg { transform: translateX(3px); }
+
+    /* STATUS BAR / FOOTER */
+    .status-bar {
+      display: flex; align-items: center; gap: 20px;
+      padding: 14px 40px; background: var(--white);
+      border-top: 1px solid var(--border); flex-wrap: wrap;
+    }
+    .status-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .dot-green { background: var(--green); }
+    .dot-gray  { background: var(--border2); }
+    .status-right { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+    /* RESPONSIVE */
+    @media (max-width: 600px) {
+      nav { padding: 14px 20px; }
+      main { padding: 36px 16px 60px; }
+      .cards-row { grid-template-columns: 1fr; }
+      .marking-row { grid-template-columns: 1fr; }
+      .marking-cell { border-right: none; border-bottom: 1px solid var(--border); }
+      .marking-cell:last-child { border-bottom: none; }
+      .status-bar { padding: 12px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-left">
+    <a href="/" class="nav-logo">ExamPortal</a>
+  </div>
+  <div class="nav-right">
+    {% if user.is_authenticated %}
+    <div class="nav-user">
+      <div class="nav-avatar">{{ user.first_name.0|default:user.username.0|upper }}</div>
+      {{ user.get_full_name|default:user.username }}
+    </div>
+    {% endif %}
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+  <!-- HEADER -->
+  <h1>{{ title|default:"Machine Test" }}</h1>
+
+  <!-- STAT CARDS -->
+  <div class="cards-row">
+    <div class="card">
+      <div class="card-label">Questions</div>
+      <div class="card-value">{{ exam.total_questions|default:"3" }}</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Pass Mark</div>
+      <div class="card-value">60%</div>
+      <div class="card-bar">
+        <div class="card-bar-fill" style="width:60%;"></div>
+      </div>
+      <div class="card-note">{{ exam.pass_score|default:"12" }} / {{ exam.total_questions|default:"3" }} correct to pass</div>
+    </div>
+  </div>
+
+  <div class="card card-wide">
+    <div>
+      <div class="card-label">Time Limit</div>
+      <div style="font-size:36px;font-weight:400;letter-spacing:-1px;line-height:1">
+        {{ exam.duration_minutes|default:"30" }} <span style="font-size:20px;color:var(--muted)">mins</span>
+      </div>
+    </div>
+    <div class="card-wide-note">
+      Timer starts the moment you enter. Navigate freely between questions — change answers any time before it runs out.
+    </div>
+  </div>
+
+  <!-- NOTICE -->
+  <div class="notice">
+    <div class="notice-icon">⚠️</div>
+    <div class="notice-text">
+      {% if exam.notice %}
+        {{ exam.notice }}
+      {% else %}
+        <strong>One attempt only.</strong> Once you click Begin Exam, the session locks and cannot be restarted — even if you close the tab.
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- INSTRUCTIONS -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        Instructions
+      </div>
+    </div>
+
+    {% if exam.rules %}
+      {% for rule in exam.rules %}
+      <div class="rule-item">
+        <div class="rule-num">{{ forloop.counter }}</div>
+        <div class="rule-body">
+          <div class="rule-text">
+            {{ rule.text }}
+            {% if rule.tag %}<span class="rule-tag {% if rule.critical %}critical{% elif rule.warn %}warn{% else %}ok{% endif %}">{{ rule.tag }}</span>{% endif %}
+          </div>
+          {% if rule.sub %}<div class="rule-sub">{{ rule.sub }}</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="rule-item">
+        <div class="rule-num">1</div>
+        <div class="rule-body">
+          <div class="rule-text">Each question has exactly one correct answer <span class="rule-tag">MCQ</span></div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">2</div>
+        <div class="rule-body">
+          <div class="rule-text">Timer starts immediately upon entering — no pause available <span class="rule-tag critical">no pause</span></div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">3</div>
+        <div class="rule-body">
+          <div class="rule-text">Exam auto-submits when the timer reaches zero <span class="rule-tag warn">auto</span></div>
+          <div class="rule-sub">All answered questions are submitted. Unanswered questions receive zero marks.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">4</div>
+        <div class="rule-body">
+          <div class="rule-text">Score of {{ exam.pass_mark|default:"60" }}% or above required to pass this screening <span class="rule-tag ok">{{ exam.pass_mark|default:"60" }}%</span></div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">5</div>
+        <div class="rule-body">
+          <div class="rule-text">Do not refresh or close the browser tab <span class="rule-tag critical">warning</span></div>
+          <div class="rule-sub">Progress is auto-saved every 30 seconds. A forced reload may cause session issues.</div>
+        </div>
+      </div>
+      <div class="rule-item">
+        <div class="rule-num">6</div>
+        <div class="rule-body">
+          <div class="rule-text">Navigate freely between all questions <span class="rule-tag ok">free nav</span></div>
+          <div class="rule-sub">Use the question palette to jump between questions and mark them for review.</div>
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- AGREEMENT -->
+    <div class="agree-wrap">
+      <input type="checkbox" class="agree-checkbox" id="agreeCheck" onchange="toggleStart()"/>
+      <label class="agree-label" for="agreeCheck">
+        I have read and understood all the instructions above and agree to the <a href="#">exam terms &amp; conditions</a>.
+      </label>
+    </div>
+  </div>
+
+  <!-- SECTIONS BREAKDOWN (if provided) -->
+  {% if exam.sections %}
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <div class="section-icon">📂</div>
+        Sections
+      </div>
+      <span class="section-count">{{ exam.sections|length }} sections</span>
+    </div>
+    {% for sec in exam.sections %}
+    <div class="section-row">
+      <div class="sec-badge">{{ forloop.counter }}</div>
+      <div class="sec-info">
+        <div class="sec-name">{{ sec.name }}</div>
+        <div class="sec-meta">{{ sec.questions }} questions &nbsp;·&nbsp; {{ sec.time }} min</div>
+      </div>
+      <div class="sec-pts">{{ sec.marks }} pts</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- START ROW -->
+  <div class="start-wrap">
+    <div class="start-note">⏱ Timer begins immediately on the next page</div>
+    <button class="btn-start" id="startBtn" aria-disabled="true" onclick="beginExam()">
+      Begin Exam
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+    </button>
+  </div>
+  
+<script>
+  const EXAM_URL = "{% url 'arena' %}";
+
+  /* ── Agreement gate ── */
+  function toggleStart() {
+    const checked = document.getElementById('agreeCheck').checked;
+    const btn = document.getElementById('startBtn');
+    if (checked) btn.removeAttribute('aria-disabled');
+    else btn.setAttribute('aria-disabled', 'true');
+  }
+
+  /* ── Begin exam — navigate directly ── */
+  function beginExam() {
+    if (document.getElementById('startBtn').getAttribute('aria-disabled') === 'true') return;
+    window.location.href = EXAM_URL;
+  }
+</script>
+</body>
+</html>
