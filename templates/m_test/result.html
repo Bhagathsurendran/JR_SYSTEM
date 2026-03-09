@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeArena — Result</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg:        #f4f4ef;
+    --surface:   #eeeee9;
+    --surface2:  #e7e7e2;
+    --surface3:  #ddddd8;
+    --ink:       #111110;
+    --ink2:      #444440;
+    --ink3:      #777770;
+    --ink4:      #aaaaaa;
+    --border:    #d2d2cc;
+    --border2:   #c4c4be;
+    --green:     #216321;
+    --green-bg:  #edf7ed;
+    --red:       #7a1e1e;
+    --red-bg:    #fdf0f0;
+    --amber:     #6b4c00;
+    --amber-bg:  #fdf8ec;
+    --topbar-h:  50px;
+    --radius:    3px;
+    --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+  }
+
+  html, body {
+    min-height: 100%;
+    background: var(--bg); color: var(--ink);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: var(--topbar-h);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 24px; gap: 16px; z-index: 500;
+  }
+  .logo {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800; font-size: 15px; letter-spacing: -0.6px;
+    display: flex; align-items: center; gap: 7px;
+    color: var(--ink);
+  }
+  .logo-mark {
+    width: 22px; height: 22px;
+    background: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .topbar-center {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+  }
+  .topbar-title {
+    font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase;
+    color: var(--ink4); font-weight: 500;
+  }
+
+  /* ── MAIN ── */
+  .page {
+    padding-top: calc(var(--topbar-h) + 48px);
+    padding-bottom: 64px;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  .result-card {
+    width: 100%; max-width: 680px;
+    padding: 0 16px;
+  }
+
+  /* ── RESULT HEADER ── */
+  .result-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+    animation: fadeup 0.35s ease both;
+  }
+
+  .result-hero {
+    padding: 36px 32px 28px;
+    display: flex; align-items: flex-start; gap: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-icon {
+    width: 52px; height: 52px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; border-radius: var(--radius);
+  }
+  .result-icon.pass { background: var(--green-bg); border: 1px solid var(--green); }
+  .result-icon.fail { background: var(--red-bg);   border: 1px solid var(--red);   }
+
+  .result-hero-text { flex: 1; }
+  .result-label {
+    font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--ink4); margin-bottom: 6px; font-weight: 500;
+  }
+  .result-verdict {
+    font-family: 'Outfit', sans-serif;
+    font-size: 32px; font-weight: 800; letter-spacing: -1px;
+    line-height: 1; margin-bottom: 8px;
+  }
+  .result-verdict.pass { color: var(--green); }
+  .result-verdict.fail { color: var(--red); }
+  .result-sub {
+    font-size: 13px; color: var(--ink3);
+  }
+
+  /* score ring */
+  .score-ring { flex-shrink: 0; position: relative; width: 72px; height: 72px; }
+  .score-ring svg { transform: rotate(-90deg); }
+  .ring-bg  { fill: none; stroke: var(--surface3); stroke-width: 5; }
+  .ring-fg  { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1); }
+  .ring-fg.pass { stroke: var(--green); }
+  .ring-fg.fail { stroke: var(--red); }
+  .ring-pct {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 14px; font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* stats row */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+  }
+  .stat-cell {
+    padding: 16px 20px;
+    border-right: 1px solid var(--border);
+  }
+  .stat-cell:last-child { border-right: none; }
+  .stat-key {
+    font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--ink4); margin-bottom: 4px; font-weight: 500;
+  }
+  .stat-val {
+    font-family: var(--font-mono); font-size: 18px; font-weight: 700;
+    color: var(--ink); letter-spacing: -0.5px;
+  }
+  .stat-val.green { color: var(--green); }
+  .stat-val.red   { color: var(--red); }
+  .stat-val.amber { color: var(--amber); }
+
+  /* ── BREAKDOWN ── */
+  .section-lbl {
+    font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--ink4); margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .breakdown {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 16px;
+    animation: fadeup 0.4s ease 0.1s both;
+  }
+
+  .breakdown-header {
+    padding: 14px 20px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .q-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s;
+  }
+  .q-row:last-child { border-bottom: none; }
+  .q-row:hover { background: var(--surface2); }
+
+  .q-num {
+    width: 28px; height: 28px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    border: 1px solid var(--border); border-radius: 2px;
+    background: var(--bg); color: var(--ink3);
+  }
+
+  .q-title { flex: 1; font-size: 13px; color: var(--ink2); font-weight: 500; }
+  .q-lang  {
+    font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--ink4); border: 1px solid var(--border);
+    padding: 2px 7px; border-radius: 2px;
+  }
+
+  .q-verdict {
+    min-width: 100px; text-align: right;
+    font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 5px; justify-content: flex-end;
+  }
+  .q-verdict.pass { color: var(--green); }
+  .q-verdict.fail { color: var(--red); }
+  .q-verdict.error { color: var(--amber); }
+
+  .q-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .q-verdict.pass  .q-dot { background: var(--green); }
+  .q-verdict.fail  .q-dot { background: var(--red); }
+  .q-verdict.error .q-dot { background: var(--amber); }
+
+  /* ── ACTIONS ── */
+  .actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    animation: fadeup 0.45s ease 0.2s both;
+  }
+  .btn {
+    padding: 8px 20px; font-family: 'DM Sans', sans-serif;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; cursor: pointer;
+    border-radius: var(--radius); transition: all 0.12s;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary {
+    background: var(--ink); color: var(--bg); border: 1px solid var(--ink);
+  }
+  .btn-primary:hover { opacity: 0.82; }
+  .btn-ghost {
+    background: transparent; color: var(--ink); border: 1px solid var(--border2);
+  }
+  .btn-ghost:hover { border-color: var(--ink); background: var(--surface2); }
+
+  /* ── PASS MARK INDICATOR ── */
+  .pass-mark {
+    padding: 10px 20px;
+    background: var(--surface2); border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--ink4);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pass-mark strong { color: var(--ink2); }
+
+  /* ── ANIMATION ── */
+  @keyframes fadeup {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .result-hero { flex-wrap: wrap; padding: 24px 20px 20px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .stat-cell:nth-child(2) { border-right: none; }
+    .stat-cell:nth-child(3) { border-top: 1px solid var(--border); }
+    .stat-cell:nth-child(4) { border-top: 1px solid var(--border); }
+    .actions { flex-direction: column; }
+    .btn { justify-content: center; }
+    .topbar-center { display: none; }
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-mark">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <rect x="1" y="1" width="4" height="4" fill="white"/>
+        <rect x="7" y="1" width="4" height="4" fill="white" opacity=".5"/>
+        <rect x="1" y="7" width="4" height="4" fill="white" opacity=".5"/>
+        <rect x="7" y="7" width="4" height="4" fill="white"/>
+      </svg>
+    </div>
+    CodeArena
+  </div>
+
+</header>
+
+<main class="page">
+  <div class="result-card">
+
+    <!-- RESULT HEADER CARD -->
+    <div class="result-header">
+      <div class="result-hero">
+        <div class="result-icon" id="resultIcon">—</div>
+        <div class="result-hero-text">
+          <div class="result-label">Final Result</div>
+          <div class="result-verdict" id="resultVerdict">—</div>
+          <div class="result-sub" id="resultSub">—</div>
+        </div>
+        <!-- Score Ring -->
+        <div class="score-ring">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle class="ring-bg" cx="36" cy="36" r="30"/>
+            <circle class="ring-fg" id="ringFg" cx="36" cy="36" r="30"
+              stroke-dasharray="188.5"
+              stroke-dashoffset="188.5"/>
+          </svg>
+          <div class="ring-pct" id="ringPct">0%</div>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-row">
+        <div class="stat-cell">
+          <div class="stat-key">Questions</div>
+          <div class="stat-val" id="statTotal">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-key">Correct</div>
+          <div class="stat-val green" id="statCorrect">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-key">Wrong</div>
+          <div class="stat-val red" id="statWrong">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-key">Time Taken</div>
+          <div class="stat-val amber" id="statTime">—</div>
+        </div>
+      </div>
+
+    
+    </div>
+
+    <!-- BREAKDOWN -->
+    <div class="breakdown">
+      <div class="breakdown-header">
+        <div class="section-lbl" style="margin:0">Submission Breakdown</div>
+      </div>
+      <div id="breakdownRows">
+        <div style="padding:32px;text-align:center;color:var(--ink4);font-size:12px;">No submissions found.</div>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="actions">
+      <a href="{% url "exam_start" %}" class="btn btn-primary">← Back to Arena</a>
+      <button class="btn btn-ghost" onclick="window.print()">Print Result</button>
+    </div>
+
+  </div>
+</main>
+
+<script>
+
+  // Read result data passed via sessionStorage
+  (function () {
+    let data;
+    try {
+      data = JSON.parse(sessionStorage.getItem('codearena_result') || 'null');
+    } catch(e) { data = null; }
+
+    if (!data) {
+      // Fallback demo data if opened directly
+      data = {
+        total: 3,
+        passed: 2,
+        passScore: 2,
+        timeTaken: '18:42',
+        lang: 'C++',
+        subs: {
+          1: { verdict: 'pass', label: 'Accepted',     title: 'Two Sum' },
+          2: { verdict: 'pass', label: 'Accepted',     title: 'Valid Parentheses' },
+          3: { verdict: 'fail', label: 'Wrong Answer', title: 'Maximum Subarray' },
+        }
+      };
+    }
+
+    const { total, passed, passScore, timeTaken, lang, subs } = data;
+    const failed  = total - passed;
+    const percent = Math.round((passed / total) * 100);
+    const isPassed = passed >= passScore;
+
+    // Header
+    document.getElementById('resultIcon').textContent    = isPassed ? '✓' : '✕';
+    document.getElementById('resultIcon').classList.add(isPassed ? 'pass' : 'fail');
+    document.getElementById('resultVerdict').textContent = isPassed ? 'PASS' : 'FAIL';
+    document.getElementById('resultVerdict').classList.add(isPassed ? 'pass' : 'fail');
+    document.getElementById('resultSub').textContent     =
+      isPassed
+        ? `You passed with ${passed} of ${total} correct.`
+        : `You needed ${passScore} correct — got ${passed}.`;
+
+    // Stats
+    document.getElementById('statTotal').textContent   = total;
+    document.getElementById('statCorrect').textContent = passed;
+    document.getElementById('statWrong').textContent   = failed;
+    document.getElementById('statTime').textContent    = timeTaken;
+
+    // Ring animation
+    const fg = document.getElementById('ringFg');
+    fg.classList.add(isPassed ? 'pass' : 'fail');
+    document.getElementById('ringPct').textContent = percent + '%';
+    const circ = 2 * Math.PI * 30; // 188.49
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        fg.style.strokeDashoffset = circ - (circ * percent / 100);
+      }, 80);
+    });
+
+    // Breakdown rows
+    const rows = Object.entries(subs);
+    if (rows.length) {
+      document.getElementById('breakdownRows').innerHTML = rows.map(([k, s]) => {
+        const cls = s.verdict === 'pass' ? 'pass' : (s.verdict === 'error' ? 'error' : 'fail');
+        const icon = cls === 'pass' ? '✓' : (cls === 'error' ? '⚠' : '✕');
+        return `<div class="q-row">
+          <div class="q-num">Q${k}</div>
+          <div class="q-title">${esc(s.title || 'Problem ' + k)}</div>
+          <div class="q-lang">${esc(lang || 'C++')}</div>
+          <div class="q-verdict ${cls}">
+            <span class="q-dot"></span>${esc(s.label)}
+          </div>
+        </div>`;
+      }).join('');
+    }
+  })();
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>

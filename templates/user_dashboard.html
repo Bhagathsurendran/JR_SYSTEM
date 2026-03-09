@@ -432,6 +432,9 @@
       .notif-row {
         display: flex; align-items: flex-start; gap: 14px;
         padding: 18px 0; border-bottom: 1px solid var(--ghost);
+          border-left: 3px solid transparent;
+          transition: background .3s, opacity .3s;
+          padding: 18px 24px;
       }
       .notif-row:last-child { border-bottom: none; }
       .ni-icon {
@@ -490,6 +493,46 @@
       ::-webkit-scrollbar-track { background: var(--white); }
       ::-webkit-scrollbar-thumb { background: var(--light); }
       .divider { height: 1px; background: var(--ghost); margin: 24px 0; }
+
+      /* Unread notification highlight */
+      .notif-unread {
+        background: var(--off);
+        border-left: 3px solid var(--black);
+        transition: background .3s, border-left .3s;
+      }
+      .notif-row {
+        border-left: 3px solid transparent;
+        transition: background .3s, opacity .3s;
+      }
+      .notif-row.fade-out {
+        opacity: 0;
+        transform: translateX(20px);
+        transition: opacity .3s ease, transform .3s ease;
+      }
+      .notif-delete-btn {
+        border: 1px solid var(--ghost);
+        background: var(--pure);
+        cursor: pointer;
+        color: var(--muted);
+        width: 32px; height: 32px;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+        transition: all .2s ease;
+        border-radius: 0;
+        opacity: 0;
+      }
+      .notif-row:hover .notif-delete-btn {
+        opacity: 1;
+      }
+      .notif-delete-btn:hover {
+        background: #fff0f0;
+        border-color: #fca5a5;
+        color: #f87171;
+        transform: scale(1.08);
+      }
+      .notif-delete-btn:active {
+        transform: scale(0.95);
+      }
     </style>
   </head>
   <body>
@@ -521,10 +564,10 @@
     </button>
 
     <div class="nav-section-label">Updates</div>
-    <button class="nav-item" onclick="showPage('notifications',this)">
+    <button class="nav-item" onclick="showPage('notifications', document.querySelector('[onclick*=notifications]'))">
       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M15 17H9m6 0a3 3 0 01-6 0m6 0H5.5A1.5 1.5 0 014 15.5v-.545A2 2 0 015.083 13.2L6 12V8a6 6 0 0112 0v4l.917 1.2A2 2 0 0120 14.955v.545A1.5 1.5 0 0118.5 17H15z"/></svg>
       Notifications
-      <span class="n-badge n-mid">3</span>
+      <span class="n-badge n-mid">{{ unread_count }}</span>
     </button>
 
     <!-- ─── FOOTER WITH POPUP ─── -->
@@ -717,13 +760,59 @@
         <button class="filter-btn"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M3 4h18M7 8h10M11 12h2"/></svg>Filter</button>
       </div>
       <div class="job-list">
-        <div class="job-item"><div class="job-logo">G</div><div class="job-info"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="job-title">Frontend Developer Intern</div><span style="font-size:9.5px;font-weight:700;padding:2px 8px;background:var(--black);color:var(--white);text-transform:uppercase">Top Match</span></div><div class="job-company">Google India · Remote · 3–6 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">React</span><span class="job-tag">JavaScript</span><span class="job-tag">CSS</span><span class="job-tag">Git</span></div></div><div class="match-col"><div class="match-num">94%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
-        <div class="job-item"><div class="job-logo">M</div><div class="job-info"><div class="job-title">ML Engineer Intern</div><div class="job-company">Microsoft · Hybrid · 6 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">Python</span><span class="job-tag">Machine Learning</span><span class="job-tag">TensorFlow</span><span class="job-tag">Pandas</span></div></div><div class="match-col"><div class="match-num">87%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
-        <div class="job-item"><div class="job-logo">A</div><div class="job-info"><div class="job-title">Backend Developer Intern</div><div class="job-company">Amazon · Bangalore · 4–6 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">Django</span><span class="job-tag">Python</span><span class="job-tag">REST API</span><span class="job-tag">PostgreSQL</span></div></div><div class="match-col"><div class="match-num">82%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
-        <div class="job-item"><div class="job-logo">I</div><div class="job-info"><div class="job-title">Data Science Intern</div><div class="job-company">Infosys · Chennai · 3 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">Python</span><span class="job-tag">NumPy</span><span class="job-tag">Data Analysis</span><span class="job-tag">SQL</span></div></div><div class="match-col"><div class="match-num">79%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
-        <div class="job-item"><div class="job-logo">W</div><div class="job-info"><div class="job-title">Full Stack Developer Intern</div><div class="job-company">Wipro · Hyderabad · 6 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">React</span><span class="job-tag">Node.js</span><span class="job-tag">MongoDB</span><span class="job-tag">Express</span></div></div><div class="match-col"><div class="match-num">74%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
-        <div class="job-item"><div class="job-logo">T</div><div class="job-info"><div class="job-title">Software Engineer Intern</div><div class="job-company">TCS · Mumbai · 3–6 months</div><div class="tag-row" style="margin-top:8px"><span class="job-tag">Java</span><span class="job-tag">Spring Boot</span><span class="job-tag">SQL</span><span class="job-tag">Git</span></div></div><div class="match-col"><div class="match-num">68%</div><div class="match-lbl">Match</div><button class="btn btn-dark" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px" onclick="applyJob(this)">Apply</button></div></div>
-      </div>
+        {% for job in jobs %}
+        <div class="job-item">
+          <!-- Company Logo -->
+          <div class="job-logo">
+            {{ job.job_title |slice:":1" }}
+          </div>
+
+          <div class="job-info">
+
+            <!-- Job Title + Top Match Badge -->
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div class="job-title">{{ job.job_title }}</div>
+
+              {% if job.match >= 80 %}
+              <span style="font-size:9.5px;font-weight:700;padding:2px 8px;background:var(--black);color:var(--white);text-transform:uppercase">
+                Top Match
+              </span>
+              {% endif %}
+            </div>
+
+            <!-- Company + Location + Duration -->
+            <div class="job-company">
+              {{ job.company_id.company_name }} · {{ job.company_id.location }} · {{ job.duration }}
+            </div>
+
+            <!-- Job Skills -->
+            <div class="tag-row" style="margin-top:8px">
+              {% for skill in job.skill_list %}
+                <span class="job-tag">{{ skill }}</span>
+              {% endfor %}
+            </div>
+
+          </div>
+
+          <!-- Match Column -->
+          <div class="match-col">
+            <div class="match-num">{{ job.match }}%</div>
+            <div class="match-lbl">Match</div>
+              <button class="btn btn-dark applyBtn" data-job="{{ job.id }}" style="margin-top:12px;height:30px;padding:0 14px;font-size:11px">
+                  {% if job.id in applied_job_ids %}
+                      Withdraw
+                  {% else %}
+                      Apply
+                  {% endif %}
+              </button>
+          </div>
+
+        </div>
+        {% empty %}
+        <p style="padding:20px;color:var(--muted)">No jobs available right now.</p>
+        {% endfor %}
+
+        </div>
     </div>
 
     <!-- ══ APPLICATIONS ══ -->
@@ -791,32 +880,85 @@
           <div class="card-bd">
             <p style="font-size:10.5px;color:var(--muted)">Auto-detected from your uploaded CV</p>
             <div class="skill-wrap">
-              <span class="skill-tag">Python</span><span class="skill-tag">React.js</span><span class="skill-tag">Django</span>
-              <span class="skill-tag">Machine Learning</span><span class="skill-tag">PostgreSQL</span><span class="skill-tag">REST API</span>
-              <span class="skill-tag plain">Git</span><span class="skill-tag plain">NumPy</span><span class="skill-tag plain">Pandas</span><span class="skill-tag plain">JavaScript</span>
+              {% if skills %}
+                  {% for skill in skills %}
+                      <span class="skill-tag {% if forloop.counter > 5 %}plain{% endif %}">
+                          {{ skill }}
+                      </span>
+                  {% endfor %}
+              {% else %}
+                  <span class="skill-tag plain">No skills extracted yet</span>
+              {% endif %}
+
             </div>
-          </div>
         </div>
       </div>
     </div>
+  
+      </div>  <!-- closes two-col -->
+  </div>  
 
     <!-- ══ NOTIFICATIONS ══ -->
-    <div class="page" id="page-notifications">
-      <div class="ph">
-        <div><h1 class="ph-title">Notifications</h1><p class="ph-sub">3 unread messages</p></div>
-        <button class="btn btn-outline" style="font-size:11px;text-transform:uppercase">Mark all read</button>
-      </div>
-      <div class="card">
-        <div class="card-bd" style="padding:0 24px">
-          <div class="notif-list">
-            <div class="notif-row"><div class="ni-icon" style="background:var(--black)"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--white)" stroke-width="2.5"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg></div><div><div class="ni-text"><strong>Application Approved!</strong> Your application for <strong>Data Analyst Intern</strong> at TCS has been approved.</div><div class="ni-time">2 hours ago</div></div></div>
-            <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><rect x="2" y="7" width="20" height="14"/></svg></div><div><div class="ni-text"><strong>2 New Jobs Matched</strong> — AI found new roles: Frontend Developer at Google and ML Engineer at Microsoft.</div><div class="ni-time">5 hours ago</div></div></div>
-            <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><path stroke-linecap="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><div><div class="ni-text"><strong>Under Review</strong> — Microsoft is reviewing your ML Engineer Intern application.</div><div class="ni-time">1 day ago</div></div></div>
-            <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--muted)" stroke-width="2"><path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div><div><div class="ni-text">Welcome to <strong>InternHub!</strong> Registration complete. Start exploring AI-matched jobs.</div><div class="ni-time">3 days ago</div></div></div>
+<div class="page" id="page-notifications">
+  <div class="ph">
+    <div>
+      <h1 class="ph-title">Notifications</h1>
+      <p class="ph-sub" id="unread-label">
+        {{ unread_count }} unread message{{ unread_count|pluralize }}
+      </p>
+    </div>
+    <button class="btn btn-dark" style="font-size:11px;text-transform:uppercase" onclick="markAllRead()">
+      ✓ Mark all read
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-bd" style="padding:0;">
+      <div class="notif-list" id="notif-list">
+        {% for notif in notifications %}
+        <div class="notif-row {% if not notif.is_read %}notif-unread{% endif %}"
+             id="notif-{{ notif.id }}">
+
+          <!-- Icon -->
+          <div class="ni-icon"
+               style="{% if '📅' in notif.message %}background:var(--black){% elif '❌' in notif.message %}background:#fff0f0;border-color:#fca5a5{% else %}background:var(--off){% endif %}">
+            {% if '📅' in notif.message %}
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--white)" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
+            {% elif '❌' in notif.message %}
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#f87171" stroke-width="2.5"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            {% else %}
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><path stroke-linecap="round" d="M15 17H9m6 0a3 3 0 01-6 0m6 0H5.5A1.5 1.5 0 014 15.5v-.545A2 2 0 015.083 13.2L6 12V8a6 6 0 0112 0v4l.917 1.2A2 2 0 0120 14.955v.545A1.5 1.5 0 0118.5 17H15z"/></svg>
+            {% endif %}
           </div>
+
+          <!-- Text -->
+          <div style="flex:1;min-width:0">
+            <div class="ni-text">{{ notif.message }}</div>
+            <div class="ni-time">{{ notif.created_at|timesince }} ago</div>
+          </div>
+
+          <!-- Right side: unread dot + delete btn -->
+          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+            {% comment %} {% if not notif.is_read %}
+            <div class="unread-dot" style="width:7px;height:7px;background:var(--black);border-radius:50%"></div>
+            {% endif %} {% endcomment %}
+            <button onclick="deleteNotif({{ notif.id }}, this)" class="notif-delete-btn" title="Delete">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+          </div>
+
         </div>
+        {% empty %}
+        <div style="padding:40px 0;text-align:center;color:var(--muted);font-size:13px">
+          No notifications yet.
+        </div>
+        {% endfor %}
       </div>
     </div>
+  </div>
+</div>
 
     <!-- ══ RESET PASSWORD ══ -->
   <!-- ═════════ RESET PASSWORD PAGE ═════════ -->
@@ -828,26 +970,14 @@
       <p class="ph-sub">Update your account password</p>
     </div>
   </div>
-
   <div class="pw-card">
-    <div class="card">
+  <div class="card">
 
-      <div class="card-hd">
-        <div class="card-hd-l">
-          <div class="card-icon-wrap">
-            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <rect x="5" y="11" width="14" height="10"/>
-              <path stroke-linecap="square" d="M8 11V7a4 4 0 018 0v4"/>
-            </svg>
-          </div>
-          <div class="card-title">Change Password</div>
-        </div>
-      </div>
+    <div class="card-hd">...</div>
 
     <div id="passwordMessage"></div>
 
     <div class="card-bd">
-
       <form id="passwordForm" method="POST">
         {% csrf_token %}
 
@@ -894,9 +1024,86 @@
 
         </div>
       </form>
-    </div> 
-    <script>
-          document.getElementById("passwordForm").addEventListener("submit", function(e){
+    </div>     
+    </div>
+  </div>
+</div>
+
+  </main>
+
+<script>
+
+
+  function markAllRead() {
+    fetch("{% url 'mark_all_read' %}", {
+      method: "POST",
+      headers: { "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value }
+    }).then(res => res.json()).then(data => {
+      if (data.status === "ok") {
+        // Remove all unread dots and highlights
+        document.querySelectorAll('.notif-unread').forEach(el => {
+          el.classList.remove('notif-unread');
+        });
+        document.querySelectorAll('.unread-dot').forEach(el => el.remove());
+        document.getElementById('unread-label').textContent = '0 unread messages';
+        // Update sidebar badge
+        const badge = document.querySelector('.nav-item [onclick*=notifications] .n-badge');
+        if (badge) badge.textContent = '0';
+      }
+    });
+  }
+
+  function deleteNotif(id, btn) {
+    fetch("{% url 'delete_notification' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: "notif_id=" + id
+    }).then(res => res.json()).then(data => {
+      if (data.status === "deleted") {
+        const row = document.getElementById('notif-' + id);
+        row.classList.add('fade-out');
+        setTimeout(() => row.remove(), 300);
+      }
+    });
+  }
+  document.addEventListener("click", function(e){
+
+    if(e.target.classList.contains("applyBtn")){
+
+        let btn = e.target;
+        let jobId = btn.dataset.job;
+
+        fetch("{% url 'toggle_apply_job' %}", {
+            method: "POST",
+            headers:{
+              "Content-Type": "application/x-www-form-urlencoded",
+              "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: "job_id=" + jobId
+        })
+        .then(res => res.json())
+        .then(data => {
+
+            if(data.status === "applied"){
+                btn.textContent = "Withdraw";
+                btn.style.background = "var(--mid)";
+            }
+            else if(data.status === "removed"){
+                btn.textContent = "Apply";
+                btn.style.background = "var(--black)";
+            }
+
+        });
+
+    }
+
+  });
+
+
+  document.getElementById("passwordForm").addEventListener("submit", function(e){
               e.preventDefault();
 
               let form = document.getElementById("passwordForm");
@@ -928,18 +1135,7 @@
 
               })
               .catch(error => console.log("Error:", error));
-          });
-    </script>   
-
-    </div>
-  </div>
-</div>
-
-
-
-  </main>
-
-  <script>
+    });
     document.addEventListener('DOMContentLoaded', function () {
       const d = new Date();
       const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];

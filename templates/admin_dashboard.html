@@ -880,6 +880,9 @@
           <div class="fg"><label class="fl">Website</label><input class="fi" id="companyEditWebsite" placeholder="https://..."></div>
         </div>
         <div class="fg"><label class="fl">Location</label><input class="fi" id="companyEditLocation" placeholder="City, Country"></div>
+        <button type="button" class="btn btn-outline" style="height:38px;font-size:12.5px" onclick="connectMetaForCompany()">
+          Connect Facebook & Instagram
+        </button>
       </form>
     </div>
     <div class="mft">
@@ -1013,6 +1016,15 @@ const DELETE_COMPANY_URL = "{% url 'delete_company' 0 %}";
 
 <script>
 
+function connectMetaForCompany() {
+    const companyId = document.getElementById("companyEditId").value;
+    if (!companyId) {
+        toast("Please open a company first", true);
+        return;
+    }
+    // Redirect to Facebook login
+    window.location.href = `/connect-meta/${companyId}/`;
+}
 
   
 /* ════ CSRF ════ */
@@ -1291,6 +1303,30 @@ function openDeleteModal(type,id,name){
     openMov('deleteModal');
 }
 
+
+// ⭐ Check if we returned from Meta OAuth and show toast
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('meta_success')) {
+        toast('✅ Facebook & Instagram connected successfully!');
+        // Clean URL
+        window.history.replaceState({}, '', '/admin-dashboard/');
+    }
+
+    if (params.get('meta_error')) {
+        const err = params.get('meta_error');
+        const messages = {
+            'no_pages':        'No Facebook Pages found on your account',
+            'token_failed':    'Could not get access token from Facebook',
+            'longtoken_failed':'Could not convert token',
+            'server_error':    'Server error during connection',
+        };
+        toast(messages[err] || 'Meta connection failed: ' + err, true);
+        window.history.replaceState({}, '', '/admin-dashboard/');
+    }
+});
+
 function removeCompanyRow(id){
     const btn = document.querySelector(`button[onclick="openDeleteModal('company',${id}`);
     if(!btn) return;
@@ -1382,7 +1418,7 @@ function handlePwSubmit(e){
 
 /* ════ LOGOUT ════ */
 function handleLogout(){openMov('logoutModal')}
-function confirmLogout(){closeMov('logoutModal');toast('Logging out…');setTimeout(function(){window.location.href='/login/'},1200)}
+function confirmLogout(){closeMov('logoutModal');toast('Logging out…');setTimeout(function(){window.location.href='{% url "logout" %}'},1200)}
 
 /* ════ INIT ════ */
 document.addEventListener('DOMContentLoaded',function(){
