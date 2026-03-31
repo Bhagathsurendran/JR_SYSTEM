@@ -252,7 +252,9 @@
     <div class="review-section" id="review-section">
       <div class="review-header">
         <div class="review-title">Answer Review</div>
-        <button class="review-back" onclick="window.location.href=HOME_URL">← New Attempt</button>
+        <a href={% url "user_dashboard" %}>
+          <button class="review-back">← Submit</button>
+        </a>
       </div>
       <div id="review-list"></div>
     </div>

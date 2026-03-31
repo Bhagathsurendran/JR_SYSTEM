@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from register.models import application
 
 MCQ_TEST = {
     "title": "Internship Screening Test",
@@ -72,7 +73,15 @@ MCQ_TEST = {
 }
 
 
-def start_exam(request):
+def start_exam(request, job_id,user_id):
+    print(f"Starting exam for job_id: {job_id}")
+    print(f"Starting exam for user_id: {user_id}")
+    
+    app_id=application.objects.get(job_id=job_id,user_id=user_id)
+    print(f"Application ID: {app_id.id}")
+    
+    request.session['app_id'] = app_id.id
+    
     return render(request, 'exam_start.html', {"title": MCQ_TEST["title"]})
 
 def exam_view(request):
@@ -139,6 +148,16 @@ def submit_exam(request):
         percentage = round((score / total) * 100, 1)
         passed = percentage >= 60
 
+        app_id = request.session.get('app_id')
+        if app_id:
+            try:
+                app = application.objects.get(id=app_id)
+                app.mcq_score = percentage
+                app.save()
+            except application.DoesNotExist:
+                print(f"Application with id {app_id} does not exist.")
+        
+        
         mins = time_taken // 60
         secs = time_taken % 60
 

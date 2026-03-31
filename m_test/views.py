@@ -1,3 +1,4 @@
+from register.models import application
 import json
 import copy
 import random
@@ -190,50 +191,49 @@ PROBLEMS = {
 }
 
 # ── Language skeleton templates ──
-
 SKELETONS = {
-        "C": """\
-    #include <stdio.h>
+    "C": """\
+#include <stdio.h>
 
-    int main() {
-        // your solution here
-
-        return 0;
-    }""",
-        "C++": """\
-    #include <bits/stdc++.h>
-    using namespace std;
-
-    int main() {
-        // your solution here
-
-        return 0;
-    }""",
-        "Python": """\
-    import sys
-    input = sys.stdin.readline
-
-    def solve():
-        # your solution here
-        pass
-
-    solve()""",
-        "Java": """\
-    import java.util.*;
-    import java.io.*;
-
-    public class Main {
-        public static void main(String[] args) throws IOException {
-            Scanner sc = new Scanner(System.in);
-            // your solution here
-        }
-    }""",
-        "JS": """\
-    const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');
-    let idx = 0;
-
+int main() {
     // your solution here
-    """,
+
+    return 0;
+}""",
+    "C++": """\
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    // your solution here
+
+    return 0;
+}""",
+    "Python": """\
+import sys
+input = sys.stdin.readline
+
+def solve():
+    # your solution here
+    pass
+
+solve()""",
+    "Java": """\
+import java.util.*;
+import java.io.*;
+
+public class Main {
+    public static void main(String[] args) throws IOException {
+        Scanner sc = new Scanner(System.in);
+        // your solution here
+    }
+}""",
+    "JS": """\
+const lines = require('fs').readFileSync('/dev/stdin','utf8').trim().split('\\n');
+let idx = 0;
+
+// your solution here
+""",
 }
 
 # ── Judge0 config ──
@@ -246,6 +246,8 @@ LANG_CFG = {
     "JS":     {"id": 102},
 }
 
+TOTAL_PROBLEMS = 3  # total questions in one exam session
+
 
 # ══════════════════════════════════════════════════════
 #  HELPERS
@@ -255,6 +257,7 @@ def _normalize(s):
     lines = [l.strip() for l in s.replace("\r", "").split("\n") if l.strip()]
     last = lines[-1] if lines else ""
     return last.replace("True", "true").replace("False", "false")
+
 
 def _call_judge0(code, lang, stdin=""):
     payload = {
@@ -273,6 +276,7 @@ def _call_judge0(code, lang, stdin=""):
     r.raise_for_status()
     return r.json()
 
+
 def _parse_judge0(d):
     sid         = (d.get("status") or {}).get("id", 3)
     is_ce       = sid == 6
@@ -288,14 +292,37 @@ def _parse_judge0(d):
         "memory":      d.get("memory", "?"),
     }
 
-#  VIEWS
 
-def exam_start(request):
+# ══════════════════════════════════════════════════════
+#  VIEWS
+# ══════════════════════════════════════════════════════
+
+def exam_start(request, job_id, user_id):
+    print(f"Starting exam for job_id: {job_id}")
+    print(f"Starting exam for user_id: {user_id}")
+
+    try:
+        app_obj = application.objects.get(job_id=job_id, user_id=user_id)
+        print(f"Application ID: {app_obj.id}")
+    except application.DoesNotExist:
+        print(f"[exam_start] ERROR: No application found for job_id={job_id}, user_id={user_id}")
+        return redirect('user_dashboard')
+
+    # Store both job_id and user_id so we can re-fetch later if session loses app_id
+    request.session['app_id']      = app_obj.id
+    request.session['exam_job_id'] = job_id       
+    request.session['exam_user_id'] = user_id     
+    request.session['solved_count']    = 0
+    request.session['solved_problems'] = []
+    request.session.modified = True
+
+    print(f"[exam_start] Session app_id set to: {request.session['app_id']}")
+
     context = {
         "title": "Machine Test",
         "exam_type": "Coding Assessment",
         "exam": {
-            "total_questions": 3,
+            "total_questions": TOTAL_PROBLEMS,
             "duration_minutes": 30,
             "pass_mark": 67,
             "pass_score": 2,
@@ -311,7 +338,7 @@ def exam_start(request):
             ],
             "notice": (
                 "You will get 3 random questions. "
-                "Solve each one and click Submit."
+                "Solve each one and click Submit. "
                 "The timer starts as soon as you enter the exam."
             ),
         },
@@ -320,25 +347,24 @@ def exam_start(request):
 
 
 def arena(request):
-    # ── KEY FIX: always pick a fresh random set, ignore any cached session value ──
-    all_ids = list(PROBLEMS.keys())           # [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    random.shuffle(all_ids)                   # shuffle in-place for extra entropy
-    chosen_ids = random.sample(all_ids, 3)    # pick 3 truly at random
+    all_ids = list(PROBLEMS.keys())
+    random.shuffle(all_ids)
+    chosen_ids = random.sample(all_ids, TOTAL_PROBLEMS)
     request.session["exam_problem_ids"] = chosen_ids
-    request.session.modified = True           # force Django to save the session
+    request.session.modified = True
 
     exam_problems = {
         str(i + 1): copy.deepcopy(PROBLEMS[pid])
         for i, pid in enumerate(chosen_ids)
     }
     for prob in exam_problems.values():
-        prob.pop("difficulty", None)   # remove difficulty label entirely
+        prob.pop("difficulty", None)
         prob["starter"] = SKELETONS
 
     context = {
         "problem":        list(exam_problems.values())[0],
         "problem_id":     1,
-        "total":          3,
+        "total":          TOTAL_PROBLEMS,
         "problems_json":  json.dumps(exam_problems),
         "skeletons_json": json.dumps(SKELETONS),
     }
@@ -346,16 +372,33 @@ def arena(request):
 
 
 def reset_exam(request):
-    request.session.flush()   # wipe entire session, not just the one key
+    request.session.flush()
     return redirect("exam_start")
 
 
 def result(request):
-    return render(request, "m_test/result.html", {"title": "Exam Result"})
+    """
+    Show final result page.
+    Score is read from session (set by api_submit when all problems attempted).
+    """
+    score      = request.session.get('final_score', 0)          # 0–100
+    solved     = request.session.get('solved_count', 0)         # 0–3
+    total      = TOTAL_PROBLEMS
+    passed     = solved >= 2                                     # pass mark = 2/3
+
+    context = {
+        "title":   "Exam Result",
+        "score":   score,
+        "solved":  solved,
+        "total":   total,
+        "passed":  passed,
+        "percent": score,
+    }
+    return render(request, "m_test/result.html", context)
 
 
 # ══════════════════════════════════════════════════════
-#  API — run (no verdict, just execute)
+#  API — run  (no verdict, just execute)
 # ══════════════════════════════════════════════════════
 
 @csrf_exempt
@@ -387,9 +430,11 @@ def api_run(request):
 
 
 # ══════════════════════════════════════════════════════
-#  API — submit (verdicts against official test case)
+#  API — submit  (verdict + score tracking)
 # ══════════════════════════════════════════════════════
 
+@csrf_exempt
+@require_http_methods(["POST"])
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_submit(request, problem_id):
@@ -419,38 +464,186 @@ def api_submit(request, problem_id):
     tc = problem["test_cases"][0]
 
     try:
-        raw    = _call_judge0(code, lang, stdin=tc["input"])
-        result = _parse_judge0(raw)
+        raw = _call_judge0(code, lang, stdin=tc["input"])
+        res = _parse_judge0(raw)
     except requests.Timeout:
         return JsonResponse({"ok": False, "error": "Compiler timed out"}, status=504)
     except requests.RequestException as e:
         return JsonResponse({"ok": False, "error": str(e)}, status=502)
 
-    if result["compile_err"]:
+
+    if res["compile_err"]:
         return JsonResponse({
             "ok": True, "verdict": "compile_error",
             "label": "Compile Error", "passed": False,
-            "compile_err": result["compile_err"],
+            "compile_err": res["compile_err"],
         })
 
-    if result["exit_code"] != 0:
+    if res["exit_code"] != 0:
         return JsonResponse({
             "ok": True, "verdict": "runtime_error",
             "label": "Runtime Error", "passed": False,
-            "stderr": result["stderr"],
+            "stderr": res["stderr"],
         })
 
-    actual   = _normalize(result["stdout"])
+    actual   = _normalize(res["stdout"])
     expected = _normalize(tc["expected"])
     passed   = actual == expected
 
+    # ── Score tracking ──
+    solved_problems = request.session.get('solved_problems', [])
+
+    if passed and real_id not in solved_problems:
+        solved_problems.append(real_id)
+        request.session['solved_problems'] = solved_problems
+
+    solved_count  = len(solved_problems)
+    score_percent = int((solved_count / TOTAL_PROBLEMS) * 100)
+
+    request.session['solved_count'] = solved_count
+    request.session['final_score']  = score_percent
+    request.session.modified = True
+
+    # ── Save to DB (always save current score, not just on pass) ──
+    app_id = request.session.get('app_id')
+
+    app_obj = None
+
+    if app_id:
+        try:
+            app_obj = application.objects.get(id=app_id)
+        except application.DoesNotExist:
+            app_obj = None
+
+    # Fallback: use job_id + user_id stored in session
+    if app_obj is None:
+        job_id_fb  = request.session.get('exam_job_id')
+        user_id_fb = request.session.get('exam_user_id')
+        if job_id_fb and user_id_fb:
+            try:
+                app_obj = application.objects.get(
+                    job_id=job_id_fb,
+                    user_id=user_id_fb
+                )
+                request.session['app_id'] = app_obj.id
+                request.session.modified  = True
+            except application.DoesNotExist:
+                print(f"[api_submit] Fallback also failed - no application found")
+
+    # Save score regardless of passed/failed (so partial scores are tracked)
+    if app_obj:
+        app_obj.machine_test_score = score_percent
+        app_obj.save()
+    else:
+        print(f"[api_submit] ❌ Could not find application - session data: app_id={request.session.get('app_id')}, job_id={request.session.get('exam_job_id')}, user_id={request.session.get('exam_user_id')}")
+
     return JsonResponse({
-        "ok":       True,
-        "verdict":  "accepted" if passed else "wrong_answer",
-        "label":    "Accepted" if passed else "Wrong Answer",
-        "passed":   passed,
-        "actual":   result["stdout"],
-        "expected": tc["expected"],
-        "cpu_time": result["cpu_time"],
-        "memory":   result["memory"],
+        "ok":            True,
+        "verdict":       "accepted" if passed else "wrong_answer",
+        "label":         "Accepted" if passed else "Wrong Answer",
+        "passed":        passed,
+        "actual":        res["stdout"],
+        "expected":      tc["expected"],
+        "cpu_time":      res["cpu_time"],
+        "memory":        res["memory"],
+        "solved_count":  solved_count,
+        "total":         TOTAL_PROBLEMS,
+        "score_percent": score_percent,
+    })
+    
+    
+    
+    
+    chosen_ids = request.session.get("exam_problem_ids", [])
+    try:
+        real_id = chosen_ids[int(problem_id) - 1]
+    except (IndexError, ValueError):
+        return JsonResponse({"ok": False, "error": "Invalid problem index"}, status=400)
+
+    problem = PROBLEMS.get(real_id)
+    if not problem:
+        return JsonResponse({"ok": False, "error": "Problem not found"}, status=404)
+
+    try:
+        body = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    code = body.get("code", "").strip()
+    lang = body.get("lang", "C++")
+
+    if not code:
+        return JsonResponse({"ok": False, "error": "No code provided"}, status=400)
+    if lang not in LANG_CFG:
+        return JsonResponse({"ok": False, "error": f"Unsupported language: {lang}"}, status=400)
+
+    tc = problem["test_cases"][0]
+
+    try:
+        raw    = _call_judge0(code, lang, stdin=tc["input"])
+        res    = _parse_judge0(raw)
+    except requests.Timeout:
+        return JsonResponse({"ok": False, "error": "Compiler timed out"}, status=504)
+    except requests.RequestException as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=502)
+
+    if res["compile_err"]:
+        return JsonResponse({
+            "ok": True, "verdict": "compile_error",
+            "label": "Compile Error", "passed": False,
+            "compile_err": res["compile_err"],
+        })
+
+    if res["exit_code"] != 0:
+        return JsonResponse({
+            "ok": True, "verdict": "runtime_error",
+            "label": "Runtime Error", "passed": False,
+            "stderr": res["stderr"],
+        })
+
+    actual   = _normalize(res["stdout"])
+    expected = _normalize(tc["expected"])
+    passed   = actual == expected
+
+    # ── Score tracking ────────────────────────────────────────
+    solved_problems = request.session.get('solved_problems', [])
+
+    if passed and real_id not in solved_problems:
+        # Only count each problem once even if re-submitted
+        solved_problems.append(real_id)
+        request.session['solved_problems'] = solved_problems
+
+    solved_count = len(solved_problems)
+    request.session['solved_count'] = solved_count
+
+    # Percentage score  e.g. 2/3 solved → 67%
+    score_percent = int((solved_count / TOTAL_PROBLEMS) * 100)
+    request.session['final_score'] = score_percent
+    request.session.modified = True
+
+    # ── Save to DB whenever a new problem is solved ───────────
+    if passed:
+        app_id = request.session.get('app_id')
+        if app_id:
+            try:
+                app_obj = application.objects.get(id=app_id)
+                app_obj.machine_test_score = score_percent
+                app_obj.save()
+                print(f"[machine_test] app_id={app_id} score saved → {score_percent}%")
+            except application.DoesNotExist:
+                print(f"[machine_test] WARNING: application id={app_id} not found")
+
+    return JsonResponse({
+        "ok":           True,
+        "verdict":      "accepted" if passed else "wrong_answer",
+        "label":        "Accepted" if passed else "Wrong Answer",
+        "passed":       passed,
+        "actual":       res["stdout"],
+        "expected":     tc["expected"],
+        "cpu_time":     res["cpu_time"],
+        "memory":       res["memory"],
+        # ── send live score back to frontend ──
+        "solved_count": solved_count,
+        "total":        TOTAL_PROBLEMS,
+        "score_percent": score_percent,
     })

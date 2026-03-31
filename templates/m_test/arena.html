@@ -1190,49 +1190,80 @@ async function submitCode() {
   openConsole();
   switchConsoleTab('output');
   clearConsole();
+
   const p  = PROBLEMS_DATA[currentId];
-  const tc = p.test_cases[0];
-  addLog('info', `Submitting Q${currentId} — running official test case …`);
-  addLog('info', `Expected output: ${tc.expected}`);
+  addLog('info', `Submitting Q${currentId} — running official test case…`);
+
   try {
-    const data   = await judge0Run(editor.value, currentLang, tc.input);
-    const result = parseResult(data);
-    if (result.compile_err) {
+    // ✅ Call Django backend instead of Judge0 directly
+    const response = await fetch(`/m_test/api/submit/${currentId}/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+      },
+      body: JSON.stringify({ code: editor.value, lang: currentLang }),
+    });
+
+    if (!response.ok) throw new Error(`Server error ${response.status}`);
+    const data = await response.json();
+
+    if (!data.ok) {
+      addLog('error', `✕  ${data.error || 'Unknown error'}`);
+      sessionSubs[currentId] = { verdict: 'fail', label: 'Error', passed: false, title: p.title };
+
+    } else if (data.verdict === 'compile_error') {
       addLog('error', '✕  Compile Error');
-      result.compile_err.split('\n').slice(0, 6).forEach(l => addLog('error', '  ' + l));
+      (data.compile_err || '').split('\n').slice(0, 6).forEach(l => addLog('error', '  ' + l));
       showVerdict('error', 'Compile Error', currentLang);
       sessionSubs[currentId] = { verdict: 'fail', label: 'Compile Error', passed: false, title: p.title };
-    } else if (result.exit_code !== 0) {
-      addLog('error', `✕  Runtime Error`);
-      if (result.stderr) result.stderr.split('\n').forEach(l => addLog('error', '  ' + l));
+
+    } else if (data.verdict === 'runtime_error') {
+      addLog('error', '✕  Runtime Error');
+      (data.stderr || '').split('\n').forEach(l => addLog('error', '  ' + l));
       showVerdict('error', 'Runtime Error', currentLang);
       sessionSubs[currentId] = { verdict: 'fail', label: 'Runtime Error', passed: false, title: p.title };
+
+    } else if (data.verdict === 'accepted') {
+      addLog('success', `✓  Accepted  (${data.cpu_time}s · ${data.memory} KB)`);
+      addLog('success', `   Output : ${data.actual}`);
+      showVerdict('pass', 'Accepted', currentLang);
+      sessionSubs[currentId] = { verdict: 'pass', label: 'Accepted', passed: true, title: p.title };
+
     } else {
-      const actual   = normalise(result.stdout);
-      const expected = normalise(tc.expected);
-      const ok       = actual === expected;
-      if (ok) {
-        addLog('success', `✓  Accepted  (${result.cpu_time}s · ${result.memory} KB)`);
-        addLog('success', `   Output : ${result.stdout.trim()}`);
-        showVerdict('pass', 'Accepted', currentLang);
-        sessionSubs[currentId] = { verdict: 'pass', label: 'Accepted', passed: true, title: p.title };
-      } else {
-        addLog('error', '✕  Wrong Answer');
-        addLog('error', `   Expected : ${tc.expected}`);
-        addLog('error', `   Got      : ${result.stdout.trim()}`);
-        showVerdict('fail', 'Wrong Answer', currentLang);
-        sessionSubs[currentId] = { verdict: 'fail', label: 'Wrong Answer', passed: false, title: p.title };
-      }
+      addLog('error', '✕  Wrong Answer');
+      addLog('error', `   Expected : ${data.expected}`);
+      addLog('error', `   Got      : ${data.actual}`);
+      showVerdict('fail', 'Wrong Answer', currentLang);
+      sessionSubs[currentId] = { verdict: 'fail', label: 'Wrong Answer', passed: false, title: p.title };
     }
+
   } catch (err) {
-    addLog('error', '✕  Network error'); addLog('error', err.message);
+    addLog('error', '✕  Network error');
+    addLog('error', err.message);
     sessionSubs[currentId] = { verdict: 'fail', label: 'Network Error', passed: false, title: p.title };
   }
+
   renderSubmissionBadge(currentId);
   renderSessionSubs();
   if (Object.keys(sessionSubs).length === TOTAL_QUESTIONS) showFinalResult();
   isRunning = false;
   setLoadingState(false, true);
+}
+
+// ✅ Add this CSRF helper function
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    for (const cookie of document.cookie.split(';')) {
+      const c = cookie.trim();
+      if (c.startsWith(name + '=')) {
+        cookieValue = decodeURIComponent(c.slice(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
 }
 
 // ═══════════════════════════════════════════

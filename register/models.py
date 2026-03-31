@@ -1,4 +1,6 @@
 from django.db import models
+import uuid
+from django.utils import timezone
 
 class user_detail(models.Model):
     id=models.AutoField(primary_key=True)
@@ -11,6 +13,7 @@ class user_detail(models.Model):
     user_pass=models.CharField(max_length=100)  
     role=models.CharField(max_length=20, default="user")
     skills = models.TextField(blank=True, null=True)
+    reg_date = models.DateTimeField(default=timezone.now)
     
 class Employee(models.Model):
     company_name = models.CharField(max_length=200)
@@ -59,6 +62,7 @@ class Job(models.Model):
 class application(models.Model):
     user_id = models.ForeignKey(user_detail, on_delete=models.CASCADE)
     job_id = models.ForeignKey(Job, on_delete=models.CASCADE)
+    match_score = models.IntegerField(default=0)
     applied_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(
         max_length=20,
@@ -66,26 +70,44 @@ class application(models.Model):
         choices=[
             ('pending','Pending'),
             ('approved','Approved'),
-            ('rejected','Rejected')
+            ('rejected','Rejected'),
+            ('interview_completed',  'Interview Completed'),
         ]
     )
+    mcq_score = models.FloatField(null=True, blank=True)
+    machine_test_score = models.FloatField(null=True, blank=True)
+
+    mcq_date          = models.DateTimeField(null=True, blank=True)
+    machine_test_date = models.DateTimeField(null=True, blank=True)
+    hr_interview_date = models.DateTimeField(null=True, blank=True)
+    interview_room_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
+    INTERVIEW_RESULT_CHOICES = [
+        ('pending',  'Pending'),
+        ('passed',   'Passed'),
+        ('failed',   'Failed'),
+    ]
+
+    # ... your existing fields ...
+    interview_result   = models.CharField(
+        max_length=20,
+        choices=INTERVIEW_RESULT_CHOICES,
+        default='pending'
+    )
+    interview_feedback = models.TextField(null=True, blank=True)
+    interview_recording = models.FileField(
+        upload_to='interview_recordings/',
+        null=True, blank=True
+    )
+    interview_transcript = models.TextField(null=True, blank=True)
+    interview_analysis   = models.JSONField(null=True, blank=True)
     
     def __str__(self):
         return f"{self.user_id.full_name} - {self.job_id.job_title}"
 
-class JobProcess(models.Model):
-
-    job = models.ForeignKey(Job, on_delete=models.CASCADE)
-
-    mcq_date = models.DateTimeField(null=True, blank=True)
-    machine_test_date = models.DateTimeField(null=True, blank=True)
-    hr_interview_date = models.DateTimeField(null=True, blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.job.job_title
-
+    def get_room_url(self):
+        return f"/interview/lobby/{self.interview_room_id}/"
+    
 class Notification(models.Model):
     user = models.ForeignKey(user_detail, on_delete=models.CASCADE)
     job  = models.ForeignKey(Job, on_delete=models.CASCADE)
@@ -95,48 +117,3 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.user.full_name}"
-    
-# class RegisterUserDetail(models.Model):
-#     ROLE_CHOICES = (
-#         ('user', 'User'),
-#         ('hr', 'HR'),
-#         ('admin', 'Admin'),
-#     )
-
-#     full_name = models.CharField(max_length=100)
-#     Email = models.EmailField(unique=True)
-#     phoneno = models.CharField(max_length=15)
-#     course = models.CharField(max_length=100)
-#     cv_url = models.FileField(upload_to='media/')
-#     profile_url = models.ImageField(upload_to='media/')
-#     user_pass = models.CharField(max_length=100)
-#     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
-
-#     def __str__(self):
-#         return self.full_name
-    
-# class HRDetail(models.Model):
-#     user = models.OneToOneField(
-#         RegisterUserDetail,
-#         on_delete=models.CASCADE,
-#         related_name='hr_profile'
-#     )
-#     department = models.CharField(max_length=100)
-#     joining_date = models.DateField(auto_now_add=True)
-
-#     def __str__(self):
-#         return f"HR - {self.user.full_name}"
-
-# class AdminDetail(models.Model):
-#     user = models.OneToOneField(
-#         RegisterUserDetail,
-#         on_delete=models.CASCADE,
-#         related_name='admin_profile'
-#     )
-#     access_level = models.CharField(max_length=50, default='full')
-
-#     def __str__(self):
-#         return f"Admin - {self.user.full_name}"
-
-
-# Create your models here.

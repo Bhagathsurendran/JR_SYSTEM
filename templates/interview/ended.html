@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interview Complete</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;900&family=Outfit:wght@800&display=swap" rel="stylesheet">
+<style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'DM Sans',sans-serif;background:#f5f5f0;min-height:100vh;
+        display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{background:#fff;border:1px solid #e5e5e0;max-width:540px;width:100%;padding:48px 40px;text-align:center}
+    .icon{width:56px;height:56px;background:#0a0a0a;display:flex;align-items:center;
+        justify-content:center;margin:0 auto 24px;font-size:24px}
+    .title{font-family:'Outfit',sans-serif;font-size:26px;font-weight:800;
+        letter-spacing:-.03em;color:#0a0a0a;margin-bottom:8px}
+    .sub{font-size:13px;color:#888;margin-bottom:32px;line-height:1.6}
+    .info-box{background:#f5f5f0;border:1px solid #e5e5e0;padding:20px;margin-bottom:28px;text-align:left}
+    .info-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:10px}
+    .info-row:last-child{margin-bottom:0}
+    .info-label{color:#888}
+    .info-val{font-weight:600;color:#0a0a0a}
+    .result-form{background:#f5f5f0;border:1px solid #e5e5e0;padding:24px;margin-bottom:24px;text-align:left}
+    .form-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+                color:#888;margin-bottom:8px;display:block}
+    .form-select,.form-textarea{
+    width:100%;padding:10px 12px;border:1px solid #ddd;
+    background:#fff;font-family:'DM Sans',sans-serif;font-size:13px;color:#0a0a0a;
+    outline:none;transition:border-color .15s;margin-bottom:16px;
+    border-radius:0;-webkit-appearance:none
+    }
+    .form-select:focus,.form-textarea:focus{border-color:#0a0a0a}
+    .form-textarea{height:100px;resize:vertical;margin-bottom:0}
+    .success-msg{
+    background:#e7ffe7;border:1px solid #b7dfb7;color:#216321;
+    padding:12px 16px;font-size:13px;font-weight:600;
+    margin-bottom:16px;display:none;text-align:left
+    }
+    .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    height:44px;padding:0 24px;font-family:'DM Sans',sans-serif;
+    font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+    cursor:pointer;border:none;text-decoration:none;transition:all .15s;
+    }
+    .btn-dark{background:#0a0a0a;color:#fff}
+    .btn-dark:hover{opacity:.85}
+    .btn-outline{background:transparent;color:#444;border:1px solid #ddd}
+    .btn-outline:hover{border-color:#0a0a0a;color:#0a0a0a}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+    .divider{height:1px;background:#e5e5e0;margin:0 0 24px}
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div class="icon">📋</div>
+  <div class="title">Interview Complete</div>
+  <div class="sub">
+    The interview session has ended.<br>
+    {% if is_hr %}Please submit your assessment below.{% else %}Thank you for attending.{% endif %}
+  </div>
+
+  <!-- Candidate & Job Info -->
+  <div class="info-box">
+    <div class="info-row">
+      <span class="info-label">Candidate</span>
+      <span class="info-val">{{ application_obj.user_id.full_name }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Role</span>
+      <span class="info-val">{{ application_obj.job_id.job_title }}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Company</span>
+      <span class="info-val">{{ application_obj.job_id.company_id.company_name }}</span>
+    </div>
+    {% if application_obj.hr_interview_date %}
+    <div class="info-row">
+      <span class="info-label">Interview Date</span>
+      <span class="info-val">{{ application_obj.hr_interview_date|date:"d M Y · g:i A" }}</span>
+    </div>
+    {% endif %}
+    {% if application_obj.status == 'interview_completed' or application_obj.status == 'rejected' %}
+    <div class="info-row">
+      <span class="info-label">Result</span>
+      <span class="info-val" style="color:{% if application_obj.status == 'interview_completed' %}#216321{% else %}#c0392b{% endif %}">
+        {% if application_obj.status == 'interview_completed' %}✓ Passed{% else %}✗ Rejected{% endif %}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if is_hr %}
+  <!-- HR Assessment Form -->
+  <div class="result-form" id="resultForm">
+    <label class="form-label">Interview Result</label>
+    <select class="form-select" id="resultSelect">
+      <option value="">— Select outcome —</option>
+      <option value="passed">✓ Passed — Move to next stage</option>
+      <option value="rejected">✗ Rejected — Does not proceed</option>
+    </select>
+
+    <label class="form-label">Feedback / Notes for Candidate</label>
+    <textarea class="form-textarea" id="feedbackText"
+      placeholder="Write your assessment notes or feedback for the candidate…">{{ application_obj.interview_feedback|default:'' }}</textarea>
+  </div>
+
+  <div class="success-msg" id="successMsg">✓ Assessment submitted successfully.</div>
+
+  <button class="btn btn-dark" id="submitBtn" style="width:100%;margin-bottom:16px" onclick="submitResult()">
+    Submit Assessment
+  </button>
+  <div class="divider"></div>
+  {% endif %}
+
+
+  <!-- Footer Actions -->
+  <div class="actions">
+    <a href="/hr_dashboard/" class="btn btn-dark">← Back to Dashboard</a>
+    {% if not is_hr %}
+    <a href="/user_dashboard/" class="btn btn-outline">My Dashboard</a>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+const ROOM_ID = "{{ room_id }}";
+
+function getCookie(name) {
+  for (const c of document.cookie.split(';')) {
+    const t = c.trim();
+    if (t.startsWith(name + '=')) return decodeURIComponent(t.slice(name.length + 1));
+  }
+  return null;
+}
+
+async function submitResult() {
+  const result   = document.getElementById('resultSelect').value;
+  console.log(result)
+  const feedback = document.getElementById('feedbackText').value.trim();
+
+  if (!result) {
+    alert('Please select an interview result first.');
+    return;
+  }
+
+  const btn = document.getElementById('submitBtn');
+  btn.textContent = 'Submitting…';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`/interview/end/${ROOM_ID}/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({ result, feedback })
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+      document.getElementById('successMsg').style.display = 'block';
+      document.getElementById('resultSelect').disabled    = true;
+      document.getElementById('feedbackText').disabled    = true;
+      btn.textContent = '✓ Submitted';
+      btn.style.background = '#216321';
+    } else {
+      btn.textContent = 'Submit Assessment';
+      btn.disabled = false;
+      alert('Something went wrong. Please try again.');
+    }
+  } catch (err) {
+    btn.textContent = 'Submit Assessment';
+    btn.disabled = false;
+    alert('Network error. Please try again.');
+  }
+}
+</script>
+</body>
+</html>

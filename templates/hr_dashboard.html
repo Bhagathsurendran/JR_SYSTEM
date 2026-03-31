@@ -1,4 +1,5 @@
 {% load static %}
+{% load tz %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,112 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/hr_dashboard.css' %}">
   <script src="{% static 'js/hr_dashboard.js' %}" defer></script>
-  <style>
-    .tabs{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-
-    .tabs-left{
-      display:flex;
-      gap:8px;
-    }
-
-    .job-filter{
-      padding:6px 10px;
-      border:1px solid #ddd;
-      border-radius:6px;
-      font-size:13px;
-      background:white;
-    }
-    .tabs-right{
-      display:flex;
-      gap:10px;
-      align-items:center;
-    }
-
-    .modal-overlay{
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:rgba(0,0,0,0.45);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:999;
-    }
-
-    .process-modal{
-    background:#fff;
-    width:500px;
-    border-radius:10px;
-    padding:25px;
-    box-shadow:0 8px 30px rgba(0,0,0,0.15);
-    }
-
-    .process-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:20px;
-    border-bottom:1px solid #eee;
-    padding-bottom:10px;
-    }
-
-    .process-header h3{
-    font-size:18px;
-    font-weight:600;
-    }
-
-    .close-modal{
-    cursor:pointer;
-    font-size:18px;
-    }
-
-    .process-body{
-    display:flex;
-    flex-direction:column;
-    gap:18px;
-    }
-
-    .process-step{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:12px;
-    border:1px solid #eee;
-    border-radius:6px;
-    background:#fafafa;
-    }
-
-    .step-title{
-    font-weight:600;
-    color:#333;
-    }
-
-    .step-controls{
-    display:flex;
-    gap:10px;
-    align-items:center;
-    }
-
-    .date-input{
-    padding:6px 8px;
-    border:1px solid #ddd;
-    border-radius:4px;
-    font-size:13px;
-    }
-
-    .process-footer{
-    margin-top:20px;
-    display:flex;
-    justify-content:flex-end;
-    gap:10px;
-    }
-  </style>
 </head>
 <body>
 
@@ -135,17 +30,17 @@
   <button class="nav-item" onclick="showPage('applications', this)">
     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="square" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>
     All Applications
-    <span class="n-badge n-white">12</span>
+    <span class="n-badge n-white">{{ applications|length }}</span>
   </button>
   <button class="nav-item" onclick="showPage('pending', this)">
     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg>
     Pending Review
-    <span class="n-badge n-white">5</span>
+    <span class="n-badge n-white">{{ pending_apps|length  }}</span>
   </button>
   <button class="nav-item" onclick="showPage('approved', this)">
     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg>
     Approved
-    <span class="n-badge n-dark">4</span>
+    <span class="n-badge n-dark">{{ approved_apps_count }}</span>
   </button>
 
   <div class="nav-section-label">Recruitment</div>
@@ -166,13 +61,16 @@
   <button class="nav-item" onclick="showPage('interviews', this)">
     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="1"/><path stroke-linecap="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
     Interview Schedule
-    <span class="n-badge n-white">4</span>
+    <span class="n-badge n-white">{{ today_interviews|length }}</span>
+    
   </button>
 
   <div class="nav-section-label">Manage</div>
   <button class="nav-item" onclick="showPage('students', this)">
     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
     Students
+    <span class="n-badge n-dark">{{user|length}}</span>
+    
   </button>
   <button class="nav-item" onclick="showPage('social', this)">
     <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path stroke-linecap="round" d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
@@ -186,14 +84,14 @@
 
   <div class="sidebar-footer">
     <div class="profile-popup">
-      <button class="popup-item">
+     <button class="popup-item" onclick="showPage('profile', null); markPopupActive('profile')">
         <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
         My Profile
-      </button>
-      <button class="popup-item">
+    </button>
+    <button class="popup-item" onclick="showPage('password', null); markPopupActive('password')">
         <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10"/><path stroke-linecap="square" d="M8 11V7a4 4 0 018 0v4"/></svg>
         Reset Password
-      </button>
+    </button>
       <a href="{% url 'logout' %}" style="text-decoration:none">
         <button class="popup-item danger">
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
@@ -204,13 +102,57 @@
     <div class="user-tile">
       <div class="u-avatar">HR</div>
       <div>
-        <div class="u-name">Priya Sharma</div>
+        <div class="u-name">{{ hr.full_name }}</div>
         <div class="u-role">HR MANAGER</div>
       </div>
       <svg class="u-chevron" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M5 15l7-7 7 7"/></svg>
     </div>
   </div>
 </aside>
+
+<!-- ══ PROFILE ══ -->
+  <div class="page" id="page-profile">
+    <div class="ph"><h1 class="ph-title">My Profile</h1></div>
+    <div class="profile-banner">
+      <div class="p-avatar">
+        <img src="{{ user.profile_url }}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Profile Picture">
+      </div>
+      <div>
+        <div class="p-name">{{ hr.full_name }}</div>
+        <div class="p-email">{{ hr.Email }}</div>
+      </div>
+      <div class="p-right">
+        <button class="btn" style="background:transparent;color:var(--muted);border:1px solid var(--mid);font-size:11px">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Re-upload CV
+        </button>
+        <button type="submit" class="btn btn-outline" style="border-color:var(--white);background:var(--white);color:var(--black)">Save Changes</button>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><div class="card-icon-wrap"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg></div><div class="card-title">Personal Information</div></div></div>
+        <div class="card-bd">
+          <div class="form-grid">
+            <div class="f-group"><label class="f-label">Full Name</label><input class="f-input" type="text" value="{{ hr.full_name }}"></div>
+            <div class="f-group"><label class="f-label">Email Address</label><input class="f-input" type="email" value="{{ hr.Email }}"></div>
+            <div class="f-group"><label class="f-label">Phone Number</label><input class="f-input" type="tel" value="{{ hr.phoneno }}"></div>
+            <div class="f-group"><label class="f-label">Course</label><input class="f-input" type="text" value="{{ hr.course }}"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-hd-l"><div class="card-icon-wrap"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div><div class="card-title">AI-Extracted Skills</div></div></div>
+        <div class="card-bd">
+          <p style="font-size:10.5px;color:var(--muted)">Auto-detected from your uploaded CV</p>
+          <div class="skill-wrap">
+            {% if skills %}{% for skill in skills %}<span class="skill-tag {% if forloop.counter > 5 %}plain{% endif %}">{{ skill }}</span>{% endfor %}
+            {% else %}<span class="skill-tag plain">No skills extracted yet</span>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <!-- ══════════════════════════════ TOP NAV ══════════════════════════════ -->
 <header class="topnav">
@@ -232,6 +174,134 @@
 
 <main class="main">
 
+<!-- ══ PROFILE ══ -->
+<div class="page" id="page-profile">
+    <div class="ph">
+        <h1 class="ph-title">My Profile</h1>
+        <p class="ph-sub">HR Manager account details</p>
+    </div>
+
+    <!-- Banner -->
+    <div style="background:var(--black);padding:32px;margin-bottom:20px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+        <div style="width:68px;height:68px;background:var(--dark);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:var(--white);flex-shrink:0;">
+            HR
+        </div>
+        <div>
+            <div style="font-size:22px;font-weight:900;letter-spacing:-.03em;color:var(--white);">{{ hr.full_name }}</div>
+            <div style="font-size:12px;color:var(--subtle);margin-top:4px;">{{ hr.email }}</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <span style="font-size:10px;font-weight:600;padding:3px 10px;border:1px solid var(--subtle);color:var(--white);text-transform:uppercase;">HR Manager</span>
+            </div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-outline" style="border-color:var(--white);background:var(--white);color:var(--black);">Save Changes</button>
+        </div>
+    </div>
+
+    <!-- Two Column -->
+    <div class="two-col">
+        <!-- Personal Info -->
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-hd-l">
+                    <div class="card-icon-wrap">
+                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </div>
+                    <div class="card-title">Personal Information</div>
+                </div>
+            </div>
+            <div class="card-bd">
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label class="form-label">Full Name</label>
+                        <input class="form-input" type="text" value="{{ hr.full_name }}">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Email Address</label>
+                        <input class="form-input" type="email" value="{{ hr.email }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Info -->
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-hd-l">
+                    <div class="card-icon-wrap">
+                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <div class="card-title">Account Info</div>
+                </div>
+            </div>
+            <div class="card-bd">
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label class="form-label">Role</label>
+                        <input class="form-input" type="text" value="HR Manager" readonly>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Department</label>
+                        <input class="form-input" type="text" value="Human Resources" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ RESET PASSWORD ══ -->
+<div class="page" id="page-password">
+    <div class="ph">
+        <div>
+            <h1 class="ph-title">Reset Password</h1>
+            <p class="ph-sub">Update your account password</p>
+        </div>
+    </div>
+    <div style="max-width:460px;">
+        <div class="card">
+            <div class="card-hd">
+                <div class="card-hd-l">
+                    <div class="card-icon-wrap">
+                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <rect x="5" y="11" width="14" height="10"/>
+                            <path stroke-linecap="square" d="M8 11V7a4 4 0 018 0v4"/>
+                        </svg>
+                    </div>
+                    <div class="card-title">Change Password</div>
+                </div>
+            </div>
+            <div id="passwordMessage"></div>
+            <div class="card-bd">
+                <form id="passwordForm">
+                    {% csrf_token %}
+                    <div style="display:flex;flex-direction:column;gap:14px;">
+                        <div class="form-row">
+                            <label class="form-label">Current Password</label>
+                            <input class="form-input" type="password" name="current_password" placeholder="Enter current password" required>
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">New Password</label>
+                            <input class="form-input" type="password" name="new_password" placeholder="Min. 8 characters" required>
+                        </div>
+                        <div class="form-row">
+                            <label class="form-label">Confirm New Password</label>
+                            <input class="form-input" type="password" name="confirm_password" placeholder="Re-enter new password" required>
+                        </div>
+                        <div style="display:flex;gap:10px;margin-top:4px;">
+                            <button type="submit" class="btn btn-dark" style="flex:2;font-size:11px;">Update Password</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
   <!-- ══════════════════════════════ OVERVIEW ══════════════════════════════ -->
   <div class="page active" id="page-overview">
     <div class="ph">
@@ -239,42 +309,35 @@
         <h1 class="ph-title">HR Dashboard</h1>
         <p class="ph-sub" id="dash-date">Loading…</p>
       </div>
-      <div class="ph-actions">
-        <button class="btn btn-outline" onclick="showPage('applications', document.querySelectorAll('.nav-item')[1])">Export Report</button>
-        <button class="btn btn-dark" onclick="showPage('pending', document.querySelectorAll('.nav-item')[2])">
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>
-          Review Pending
-        </button>
-      </div>
     </div>
     <div class="stats-row">
       <div class="stat-card">
         <div class="stat-top"><span class="stat-lbl">Total Applications</span><span class="stat-pill pill-dark">+3 Today</span></div>
-        <div class="stat-val">12</div>
-        <div class="stat-foot">Across all roles this month</div>
+        <div class="stat-val">{{ applications|length }}</div>
+        
       </div>
       <div class="stat-card">
         <div class="stat-top"><span class="stat-lbl">Pending Review</span><span class="stat-pill pill-outline">Needs Action</span></div>
-        <div class="stat-val">5</div>
+        <div class="stat-val">{{ pending_apps|length  }}</div>
         <div class="stat-foot">Awaiting your decision</div>
       </div>
       <div class="stat-card">
         <div class="stat-top"><span class="stat-lbl">Active Job Posts</span><span class="stat-pill pill-ghost">This Month</span></div>
-        <div class="stat-val">6</div>
+        <div class="stat-val">{{ job_open }}</div>
         <div class="stat-foot">Positions currently open</div>
       </div>
       <div class="stat-card">
         <div class="stat-top"><span class="stat-lbl">Interviews Today</span><span class="stat-pill pill-dark">Scheduled</span></div>
-        <div class="stat-val">4</div>
+        <div class="stat-val">{{ today_interviews|length }}</div>
         <div class="stat-foot">Technical + HR rounds</div>
       </div>
     </div>
     <div class="pipeline">
-      <div class="pipe-stage"><div class="pipe-stage-name">New</div><div class="pipe-count">12</div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:100%"></div></div><div class="pipe-pct">100%</div></div>
-      <div class="pipe-stage"><div class="pipe-stage-name">Under Review</div><div class="pipe-count">7</div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:58%"></div></div><div class="pipe-pct">58%</div></div>
-      <div class="pipe-stage"><div class="pipe-stage-name">Shortlisted</div><div class="pipe-count">5</div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:42%"></div></div><div class="pipe-pct">42%</div></div>
-      <div class="pipe-stage"><div class="pipe-stage-name">Approved</div><div class="pipe-count">4</div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:33%"></div></div><div class="pipe-pct">33%</div></div>
-      <div class="pipe-stage"><div class="pipe-stage-name">Rejected</div><div class="pipe-count">3</div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:25%"></div></div><div class="pipe-pct">25%</div></div>
+      <div class="pipe-stage"><div class="pipe-stage-name">New</div><div class="pipe-count">{{ pending_apps|length  }}</div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:100%"></div></div><div class="pipe-pct">100%</div></div>
+      <div class="pipe-stage"><div class="pipe-stage-name">Under Review</div><div class="pipe-count">{{ completed_interview_count }}</div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:58%"></div></div><div class="pipe-pct">58%</div></div>
+      <div class="pipe-stage"><div class="pipe-stage-name">Shortlisted</div><div class="pipe-count">{{ approved_apps_count }}</div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:42%"></div></div><div class="pipe-pct">42%</div></div>
+      <div class="pipe-stage"><div class="pipe-stage-name">Approved</div><div class="pipe-count">{{ approved_apps_count }}</div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:33%"></div></div><div class="pipe-pct">33%</div></div>
+      <div class="pipe-stage"><div class="pipe-stage-name">Rejected</div><div class="pipe-count">{{ pending_apps_count }}</div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:25%"></div></div><div class="pipe-pct">25%</div></div>
     </div>
     <div class="dash-grid">
       <div class="card">
@@ -355,16 +418,16 @@
       <div class="ph-actions"><button class="btn btn-outline">Export CSV</button></div>
     </div>
     <div class="mini-stats">
-      <div class="mini-stat"><div class="mini-stat-val">12</div><div class="mini-stat-lbl">Total</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">5</div><div class="mini-stat-lbl">Pending</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">4</div><div class="mini-stat-lbl">Approved</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">3</div><div class="mini-stat-lbl">Rejected</div></div>
+      <div class="mini-stat"><div class="mini-stat-val">{{ applications|length }}</div><div class="mini-stat-lbl">Total</div></div>
+      <div class="mini-stat"><div class="mini-stat-val">{{ pending_apps_count }}</div><div class="mini-stat-lbl">Pending</div></div>
+      <div class="mini-stat"><div class="mini-stat-val">{{ approved_apps_count }}</div><div class="mini-stat-lbl">Approved</div></div>
+      <div class="mini-stat"><div class="mini-stat-val">{{ rejected_apps_count }}</div><div class="mini-stat-lbl">Rejected</div></div>
     </div>
     <div class="tabs">
-      <button class="tab active" onclick="filterApps(this,'all')">All <span class="tab-count">12</span></button>
+      <button class="tab active" onclick="filterApps(this,'all')">All <span class="tab-count">{{ applications|length }}</span></button>
       <button class="tab" onclick="filterApps(this,'review')">Under Review <span class="tab-count">3</span></button>
-      <button class="tab" onclick="filterApps(this,'pending')">Pending <span class="tab-count">5</span></button>
-      <button class="tab" onclick="filterApps(this,'approved')">Approved <span class="tab-count">4</span></button>
+      <button class="tab" onclick="filterApps(this,'pending')">Pending <span class="tab-count">{{ pending_apps_count }}</span></button>
+      <button class="tab" onclick="filterApps(this,'approved')">Approved <span class="tab-count">{{ approved_apps_count }}</span></button>
     </div>
     <div class="sf-bar">
       <div class="sf-search">
@@ -378,538 +441,644 @@
         <table class="app-table" id="apps-table">
           <thead><tr><th>Student</th><th>Applied Role</th><th>Match</th><th>Skills</th><th>Applied On</th><th>Status</th><th>Action</th></tr></thead>
           <tbody id="apps-tbody">
-            <tr data-status="review" onclick="openModal('Arun Kumar','AK','arun@college.edu','Computer Science','ML Engineer Intern','Microsoft · Hybrid','Jan 22, 2025','87%',['Python','ML','TensorFlow'],'review')">
-              <td><div class="stu-cell"><div class="stu-avatar">AK</div><div><div class="app-student-name">Arun Kumar</div><div class="app-student-meta">CS · 3rd Year · arun@college.edu</div></div></div></td>
-              <td><div class="app-role">ML Engineer Intern</div><div class="app-role-meta">Microsoft · Hybrid · 6 months</div></td>
-              <td><div class="match-badge">87%</div><div class="match-lbl">Match</div></td>
-              <td><div class="skills-wrap"><span class="skill-tag">Python</span><span class="skill-tag">ML</span><span class="skill-tag">TensorFlow</span></div></td>
-              <td style="font-size:12px;color:var(--muted)">Jan 22, 2025</td>
-              <td><span class="s-pill s-review">Under Review</span></td>
+          {% for a in applications %}
+            <tr data-status="review" onclick="openModal('{{ a.user_id.full_name }}','AK','{{ a.user_id.Email }}','{{ a.user_id.course }}','{{ a.job_id.job_title }}','{{ a.job_id.company_id.company_name }} · Hybrid','{{ a.applied_at }}','{{ a.match_score }}',['Python','ML','TensorFlow'],'review')">
+              <td><div class="stu-cell"><div class="stu-avatar">{{ forloop.counter }}</div><div><div class="app-student-name">{{ a.user_id.full_name }}</div><div class="app-student-meta">{{ a.user_id.course }} · {{ a.user_id.Email }}</div></div></div></td>
+              <td><div class="app-role">{{ a.job_id.job_title }}</div><div class="app-role-meta">{{ a.job_id.company_id.company_name }} · {{ a.job_id.duration }}</div></td>
+              <td><div class="match-badge">{{ a.match_score }}</div><div class="match-lbl">Match</div></td>
+              <td>
+              <div class="skills-wrap">
+                    {% for skill in a.job_id.skills|slice:":3" %}
+                      <span class="skill-tag">{{ skill }}</span>
+                    {% endfor %}
+
+                    {% if a.job_id.skills|length > 3 %}
+                      <span class="skill-tag">
+                        +{{ a.job_id.skills|length|add:"-3" }}
+                      </span>
+                    {% endif %}
+              </div>           
+              </td>
+              <td style="font-size:12px;color:var(--muted)">{{ a.applied_at }}</td>
+              <td><span class="s-pill s-review">{{ a.status }}</span></td>
               <td><div class="action-pair"><button class="btn btn-approve" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();approveRow(this)">Approve</button><button class="btn btn-reject" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();rejectRow(this)">Reject</button></div></td>
             </tr>
-            <tr data-status="pending" onclick="openModal('Priya Nair','PN','priya@college.edu','Information Technology','Frontend Developer Intern','Google India · Remote','Jan 28, 2025','94%',['React','JavaScript','CSS'],'pending')">
-              <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--mid)">PN</div><div><div class="app-student-name">Priya Nair</div><div class="app-student-meta">IT · 2nd Year · priya@college.edu</div></div></div></td>
-              <td><div class="app-role">Frontend Developer Intern</div><div class="app-role-meta">Google India · Remote · 3–6 months</div></td>
-              <td><div class="match-badge">94%</div><div class="match-lbl">Match</div></td>
-              <td><div class="skills-wrap"><span class="skill-tag">React</span><span class="skill-tag">JavaScript</span><span class="skill-tag">CSS</span></div></td>
-              <td style="font-size:12px;color:var(--muted)">Jan 28, 2025</td>
-              <td><span class="s-pill s-pending">Pending</span></td>
-              <td><div class="action-pair"><button class="btn btn-approve" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();approveRow(this)">Approve</button><button class="btn btn-reject" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();rejectRow(this)">Reject</button></div></td>
-            </tr>
-            <tr data-status="approved" onclick="openModal('Ravi Shankar','RS','ravi@college.edu','Data Science','Data Analyst Intern','TCS · Mumbai','Jan 18, 2025','79%',['Python','SQL','NumPy'],'approved')">
-              <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--subtle)">RS</div><div><div class="app-student-name">Ravi Shankar</div><div class="app-student-meta">DS · 3rd Year · ravi@college.edu</div></div></div></td>
-              <td><div class="app-role">Data Analyst Intern</div><div class="app-role-meta">TCS · Mumbai · 3 months</div></td>
-              <td><div class="match-badge">79%</div><div class="match-lbl">Match</div></td>
-              <td><div class="skills-wrap"><span class="skill-tag">Python</span><span class="skill-tag">SQL</span><span class="skill-tag">NumPy</span></div></td>
-              <td style="font-size:12px;color:var(--muted)">Jan 18, 2025</td>
-              <td><span class="s-pill s-approved">Approved</span></td>
-              <td><div class="action-pair"><button class="btn btn-outline" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation()">View Letter</button></div></td>
-            </tr>
-            <tr data-status="pending" onclick="openModal('Meena Raj','MR','meena@college.edu','Computer Science','Backend Developer Intern','Amazon · Bangalore','Feb 01, 2025','82%',['Django','Python','REST API'],'pending')">
-              <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--light);color:var(--black)">MR</div><div><div class="app-student-name">Meena Raj</div><div class="app-student-meta">CS · 4th Year · meena@college.edu</div></div></div></td>
-              <td><div class="app-role">Backend Developer Intern</div><div class="app-role-meta">Amazon · Bangalore · 4–6 months</div></td>
-              <td><div class="match-badge">82%</div><div class="match-lbl">Match</div></td>
-              <td><div class="skills-wrap"><span class="skill-tag">Django</span><span class="skill-tag">Python</span><span class="skill-tag">REST API</span></div></td>
-              <td style="font-size:12px;color:var(--muted)">Feb 01, 2025</td>
-              <td><span class="s-pill s-pending">Pending</span></td>
-              <td><div class="action-pair"><button class="btn btn-approve" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();approveRow(this)">Approve</button><button class="btn btn-reject" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();rejectRow(this)">Reject</button></div></td>
-            </tr>
-            <tr data-status="rejected">
-              <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--ghost);color:var(--muted)">KP</div><div><div class="app-student-name">Kiran Patel</div><div class="app-student-meta">AI · 2nd Year · kiran@college.edu</div></div></div></td>
-              <td><div class="app-role">Full Stack Developer Intern</div><div class="app-role-meta">Wipro · Hyderabad · 6 months</div></td>
-              <td><div class="match-badge">68%</div><div class="match-lbl">Match</div></td>
-              <td><div class="skills-wrap"><span class="skill-tag">React</span><span class="skill-tag">Node.js</span><span class="skill-tag">MongoDB</span></div></td>
-              <td style="font-size:12px;color:var(--muted)">Dec 10, 2024</td>
-              <td><span class="s-pill s-rejected">Rejected</span></td>
-              <td><div class="action-pair"><button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:11px">Feedback</button></div></td>
-            </tr>
+          {% endfor %}
           </tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- ══════════════════════════════ PENDING ══════════════════════════════ -->
+  <!-- ══════════════════════════════ Pending review ══════════════════════════════ -->
   <div class="page" id="page-pending">
-    <div class="ph">
-      <div><h1 class="ph-title">Pending Review</h1><p class="ph-sub">5 applications awaiting your decision</p></div>
-      <div class="ph-actions"><button class="btn btn-dark" onclick="alert('All pending applications approved!')">Approve All</button></div>
-    </div>
-    <div class="card">
-      <div style="overflow-x:auto">
-        <table class="app-table">
-          <thead><tr><th>Student</th><th>Applied Role</th><th>Match</th><th>Applied On</th><th>CV</th><th>Action</th></tr></thead>
-          <tbody>
-            <tr onclick="openModal('Priya Nair','PN','priya@college.edu','Information Technology','Frontend Developer Intern','Google India · Remote','Jan 28, 2025','94%',['React','JavaScript','CSS'],'pending')">
-              <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--mid)">PN</div><div><div class="app-student-name">Priya Nair</div><div class="app-student-meta">IT · 2nd Year</div></div></div></td>
-              <td><div class="app-role">Frontend Developer Intern</div><div class="app-role-meta">Google India · Remote</div></td>
-              <td><div class="match-badge">94%</div><div class="match-lbl">Match</div></td>
-              <td style="font-size:12px;color:var(--muted)">Jan 28, 2025</td>
-              <td><button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation()">View CV</button></td>
-              <td><div class="action-pair"><button class="btn btn-approve" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();approveRow(this)">Approve</button><button class="btn btn-reject" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();rejectRow(this)">Reject</button></div></td>
-            </tr>
-            <tr onclick="openModal('Meena Raj','MR','meena@college.edu','Computer Science','Backend Developer Intern','Amazon · Bangalore','Feb 01, 2025','82%',['Django','Python','REST API'],'pending')">
-              <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--light);color:var(--black)">MR</div><div><div class="app-student-name">Meena Raj</div><div class="app-student-meta">CS · 4th Year</div></div></div></td>
-              <td><div class="app-role">Backend Developer Intern</div><div class="app-role-meta">Amazon · Bangalore</div></td>
-              <td><div class="match-badge">82%</div><div class="match-lbl">Match</div></td>
-              <td style="font-size:12px;color:var(--muted)">Feb 01, 2025</td>
-              <td><button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation()">View CV</button></td>
-              <td><div class="action-pair"><button class="btn btn-approve" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();approveRow(this)">Approve</button><button class="btn btn-reject" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();rejectRow(this)">Reject</button></div></td>
-            </tr>
-            <tr>
-              <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--dark)">ST</div><div><div class="app-student-name">Sanjay T.</div><div class="app-student-meta">CS · 3rd Year</div></div></div></td>
-              <td><div class="app-role">Software Engineer Intern</div><div class="app-role-meta">TCS · Mumbai</div></td>
-              <td><div class="match-badge">71%</div><div class="match-lbl">Match</div></td>
-              <td style="font-size:12px;color:var(--muted)">Feb 05, 2025</td>
-              <td><button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:11px">View CV</button></td>
-              <td><div class="action-pair"><button class="btn btn-approve" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();approveRow(this)">Approve</button><button class="btn btn-reject" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();rejectRow(this)">Reject</button></div></td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="ph">
+        <div>
+          <h1 class="ph-title">Pending Review</h1>
+          <p class="ph-sub">{{ pending_apps|length }} applications awaiting your decision</p>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-dark" onclick="approveAll()">Approve All</button>
+        </div>
       </div>
-    </div>
+      <div class="card">
+        <div style="overflow-x:auto">
+          <table class="app-table">
+            <thead>
+              <tr><th>Student</th><th>Applied Role</th><th>Match</th><th>Applied On</th><th>CV</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              {% for app in pending_apps %}
+              <tr data-app-id="{{ app.id }}">
+                <td>
+                  <div class="stu-cell">
+                    <div class="stu-avatar" style="background:var(--mid)">PN</div>
+                    <div>
+                      <div class="app-student-name">{{ app.user_id.full_name }}</div>
+                      <div class="app-student-meta">IT · 2nd Year</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="app-role">{{ app.job_id.job_title }}</div>
+                  <div class="app-role-meta">{{ app.job_id.company_id.company_name }}</div>
+                </td>
+                <td>
+                  <div class="match-badge">{{ app.match_score }}%</div>
+                  <div class="match-lbl">Match</div>
+                </td>
+                <td style="font-size:12px;color:var(--muted)">{{ app.applied_at|date:"M j, Y" }}</td>
+                <td>
+                  <a href="{{ app.user_id.cv_url }}" target="_blank"
+                    class="btn btn-ghost"
+                    style="height:30px;padding:0 12px;font-size:11px;text-decoration:none;"
+                    onclick="event.stopPropagation()">
+                    View CV
+                  </a>
+                </td>
+                <td>
+                  <div class="action-pair">
+                    <button class="btn btn-approve" style="height:30px;padding:0 12px;font-size:11px"
+                      onclick="event.stopPropagation(); updateStatus({{ app.id }}, 'approved', this)">Approve</button>
+                    <button class="btn btn-reject" style="height:30px;padding:0 12px;font-size:11px"
+                      onclick="event.stopPropagation(); updateStatus({{ app.id }}, 'rejected', this)">Reject</button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>  
+      </div>
   </div>
 
-  <!-- ══════════════════════════════ APPROVED ══════════════════════════════ -->
-  <div class="page" id="page-approved">
-    <div class="ph">
-      <div><h1 class="ph-title">Approved</h1><p class="ph-sub">4 students approved — offer letters sent</p></div>
-      <div class="ph-actions"><button class="btn btn-outline">Download All Letters</button></div>
-    </div>
-    <div class="card">
-      <div style="overflow-x:auto">
-        <table class="app-table">
-          <thead><tr><th>Student</th><th>Approved Role</th><th>Company</th><th>Approved On</th><th>Letter</th></tr></thead>
-          <tbody>
-            <tr onclick="openModal('Ravi Shankar','RS','ravi@college.edu','Data Science','Data Analyst Intern','TCS · Mumbai','Jan 18, 2025','79%',['Python','SQL','NumPy'],'approved')">
-              <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--subtle)">RS</div><div><div class="app-student-name">Ravi Shankar</div><div class="app-student-meta">DS · 3rd Year</div></div></div></td>
-              <td><div class="app-role">Data Analyst Intern</div></td>
-              <td style="font-size:13px;font-weight:500">TCS · Mumbai</td>
-              <td style="font-size:12px;color:var(--muted)">Jan 20, 2025</td>
-              <td><button class="btn btn-dark" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();openLetterModal('Ravi Shankar','Data Analyst Intern','TCS','Mumbai','3 months','₹15,000/month','Python,SQL,NumPy')">Download</button></td>
-            </tr>
-            <tr>
-              <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--dark)">NV</div><div><div class="app-student-name">Neha Verma</div><div class="app-student-meta">AI · 3rd Year</div></div></div></td>
-              <td><div class="app-role">ML Research Intern</div></td>
-              <td style="font-size:13px;font-weight:500">Infosys · Chennai</td>
-              <td style="font-size:12px;color:var(--muted)">Jan 25, 2025</td>
-              <td><button class="btn btn-dark" style="height:30px;padding:0 12px;font-size:11px" onclick="openLetterModal('Neha Verma','ML Research Intern','Infosys','Chennai','6 months','₹18,000/month','Python,ML,Research')">Download</button></td>
-            </tr>
-            <tr>
-              <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--mid)">AP</div><div><div class="app-student-name">Anand Pillai</div><div class="app-student-meta">CS · 4th Year</div></div></div></td>
-              <td><div class="app-role">DevOps Intern</div></td>
-              <td style="font-size:13px;font-weight:500">Wipro · Bangalore</td>
-              <td style="font-size:12px;color:var(--muted)">Feb 02, 2025</td>
-              <td><button class="btn btn-dark" style="height:30px;padding:0 12px;font-size:11px" onclick="openLetterModal('Anand Pillai','DevOps Intern','Wipro','Bangalore','4 months','₹12,000/month','Docker,Kubernetes,CI/CD')">Download</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 
-  <!-- ══════════════════════════════ JOB POSTINGS ══════════════════════════════ -->
-  <div class="page" id="page-jobposting">
-    <div class="ph">
-      <div><h1 class="ph-title">Job Postings</h1><p class="ph-sub">Create and manage internship listings</p></div>
-      <div class="ph-actions">
-        <button class="btn btn-dark" onclick="openJobForm()">
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 4v16m8-8H4"/></svg>
-          New Job Post
-        </button>
+    <!-- ══════════════════════════════ APPROVED ══════════════════════════════ -->
+    <div class="page" id="page-approved">
+      <div class="ph">
+        <div><h1 class="ph-title">Approved</h1><p class="ph-sub">4 students approved — offer letters sent</p></div>
+        <div class="ph-actions"><button class="btn btn-outline">Download All Letters</button></div>
+      </div>
+      <div class="card">
+        <div style="overflow-x:auto">
+          <table class="app-table">
+            <thead><tr><th>Student</th><th>Approved Role</th><th>Company</th><th>Approved On</th><th>Letter</th></tr></thead>
+            <tbody>
+              {% for approved in approved_apps %}
+              <tr onclick="openModal('{{approved.name}}','RS','{{approved.email}}','{{approved.course}}','{{ approved.job_title }}','{{ approved.company }} · {{ approved.location }}','{{ approved.approved_on }}','{{ approved.match_score }}',['Python','SQL','NumPy'],'approved')">
+                <td><div class="stu-cell"><div class="stu-avatar" style="background:var(--subtle)">{{ forloop.counter }}</div><div><div class="app-student-name">{{approved.name}}</div><div class="app-student-meta">{{ approved.course}}</div></div></div></td>
+                <td><div class="app-role">{{ approved.job_title }}</div></td>
+                <td style="font-size:13px;font-weight:500">{{ approved.company }} · {{ approved.location }}</td>
+                <td style="font-size:12px;color:var(--muted)"> {{ approved.approved_on }}</td>
+                <td><button class="btn btn-dark" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();openLetterModal('{{approved.name}}','{{ approved.job_title }}','{{ approved.company }}','{{ approved.location }}','{{ approved.duration }}','{{ approved.stipend }}','{{ approved.req_skill }}')">Download</button></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-    <div class="mini-stats">
-      <div class="mini-stat"><div class="mini-stat-val" id="stat-total">{{ job_total }}</div><div class="mini-stat-lbl">Total Posts</div></div>
-      <div class="mini-stat"><div class="mini-stat-val" id="stat-open">{{ job_open }}</div><div class="mini-stat-lbl">Open</div></div>
-      <div class="mini-stat"><div class="mini-stat-val" id="stat-draft">{{ job_draft }}</div><div class="mini-stat-lbl">Draft</div></div>
-      <div class="mini-stat"><div class="mini-stat-val" id="stat-closed">{{ job_closed }}</div><div class="mini-stat-lbl">Closed</div></div>
-    </div>
-    <div class="tabs" id="job-tabs">
-      <button class="tab active" onclick="filterJobs(this,'all')">All <span class="tab-count" id="tab-count-all">{{ job_total }}</span></button>
-      <button class="tab" onclick="filterJobs(this,'open')">Open <span class="tab-count" id="tab-count-open">{{ job_open }}</span></button>
-      <button class="tab" onclick="filterJobs(this,'draft')">Draft <span class="tab-count" id="tab-count-draft">{{ job_draft }}</span></button>
-      <button class="tab" onclick="filterJobs(this,'closed')">Closed <span class="tab-count" id="tab-count-closed">{{ job_closed }}</span></button>
-    </div>
-    <div class="job-cards-grid" id="job-cards-container">
-      {% for j in job %}
-      <div class="job-card" data-status="{{ j.status }}" data-id="{{ j.id }}"
-           data-title="{{ j.job_title }}"
-           data-company="{{ j.company.id }}"
-           data-company-name="{{ j.company.company_name }}"
-           data-location="{{ j.location }}"
-           data-duration="{{ j.duration }}"
-           data-stipend="{{ j.stipend }}"
-           data-deadline="{{ j.deadline|date:'Y-m-d' }}"
-           data-skills="{{ j.skills }}"
-           data-description="{{ j.description }}"
-           data-status-val="{{ j.status }}">
-        <div class="job-card-header">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div>
-              <div class="job-card-title">{{ j.job_title }}</div>
-              <div class="job-card-company">{{ j.company.company_name }}</div>
-            </div>
-            {% if j.app_count > 0 %}
-            <div class="top-left-badge" onclick="openApplicantsModal({{ j.id }})">{{ j.app_count }}</div>
-            {% endif %}
-          </div>
-          <span class="job-status-badge badge-{{ j.status }}">
-            {% if j.status == 'open' %}Open{% elif j.status == 'draft' %}Draft{% else %}Closed{% endif %}
-          </span>
+
+    <!-- ══════════════════════════════ JOB POSTINGS ══════════════════════════════ -->
+    <div class="page" id="page-jobposting">
+      <div class="ph">
+        <div><h1 class="ph-title">Job Postings</h1><p class="ph-sub">Create and manage internship listings</p></div>
+        <div class="ph-actions">
+          <button class="btn btn-dark" onclick="openJobForm()">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 4v16m8-8H4"/></svg>
+            New Job Post
+          </button>
         </div>
-        <div class="job-meta-row">
-          <span class="job-meta-item"><svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>{{ j.location }}</span>
-          <span class="job-meta-item"><svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg>{{ j.duration }}</span>
-          <span class="job-meta-item"><svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>{{ j.stipend }}</span>
-        </div>
-        <div class="job-skills-row">
-          {% for skill in j.skills_list %}<span class="skill-tag">{{ skill }}</span>{% endfor %}
-        </div>
-        <div class="job-card-footer">
-          <div class="job-apps-count"><strong>{{ j.application_set.count }}</strong> Application{{ j.application_set.count|pluralize }} · Deadline: {% if j.deadline %}{{ j.deadline|date:"M d, Y" }}{% else %}—{% endif %}</div>
-          <div style="display:flex;gap:6px;align-items:center">
-            {% if j.status != 'closed' %}
-            <div class="edit-dropdown-wrap" id="dropdown-{{ j.id }}">
-              <button class="btn btn-ghost" style="height:28px;padding:0 10px;font-size:10px;display:flex;align-items:center;gap:5px" onclick="event.stopPropagation();toggleEditDropdown('{{ j.id }}')">Edit <svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M19 9l-7 7-7-7"/></svg></button>
-              <div class="edit-dropdown-menu">
-                <button class="edit-dropdown-item" onclick="event.stopPropagation();openEditForm('{{ j.id }}')"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Edit Details</button>
-                <button class="edit-dropdown-item" onclick="event.stopPropagation();closeJobToStatus('{{ j.id }}')"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>Close Posting</button>
-                <div class="edit-dropdown-divider"></div>
-                <button class="edit-dropdown-item delete" onclick="event.stopPropagation();openDeleteConfirm('{{ j.id }}','{{ j.job_title }}')"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path stroke-linecap="round" d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m5 0V4a1 1 0 011-1h2a1 1 0 011 1v2"/></svg>Delete Posting</button>
+      </div>
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="mini-stat-val" id="stat-total">{{ job_total }}</div><div class="mini-stat-lbl">Total Posts</div></div>
+        <div class="mini-stat"><div class="mini-stat-val" id="stat-open">{{ job_open }}</div><div class="mini-stat-lbl">Open</div></div>
+        <div class="mini-stat"><div class="mini-stat-val" id="stat-draft">{{ job_draft }}</div><div class="mini-stat-lbl">Draft</div></div>
+        <div class="mini-stat"><div class="mini-stat-val" id="stat-closed">{{ job_closed }}</div><div class="mini-stat-lbl">Closed</div></div>
+      </div>
+      <div class="tabs" id="job-tabs">
+        <button class="tab active" onclick="filterJobs(this,'all')">All <span class="tab-count" id="tab-count-all">{{ job_total }}</span></button>
+        <button class="tab" onclick="filterJobs(this,'open')">Open <span class="tab-count" id="tab-count-open">{{ job_open }}</span></button>
+        <button class="tab" onclick="filterJobs(this,'draft')">Draft <span class="tab-count" id="tab-count-draft">{{ job_draft }}</span></button>
+        <button class="tab" onclick="filterJobs(this,'closed')">Closed <span class="tab-count" id="tab-count-closed">{{ job_closed }}</span></button>
+      </div>
+      <div class="job-cards-grid" id="job-cards-container">
+        {% for j in job %}
+        <div class="job-card" data-status="{{ j.status }}" data-id="{{ j.id }}"
+            data-title="{{ j.job_title }}"
+            data-company="{{ j.company.id }}"
+            data-company-name="{{ j.company.company_name }}"
+            data-location="{{ j.location }}"
+            data-duration="{{ j.duration }}"
+            data-stipend="{{ j.stipend }}"
+            data-deadline="{{ j.deadline|date:'Y-m-d' }}"
+            data-skills="{{ j.skills }}"
+            data-description="{{ j.description }}"
+            data-status-val="{{ j.status }}">
+          <div class="job-card-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div>
+                <div class="job-card-title">{{ j.job_title }}</div>
+                <div class="job-card-company">{{ j.company.company_name }}</div>
               </div>
+              {% if j.app_count > 0 %}
+              <div class="top-left-badge" onclick="openApplicantsModal({{ j.id }})">{{ j.app_count }}</div>
+              {% endif %}
             </div>
-            {% else %}
-            <div class="edit-dropdown-wrap" id="dropdown-{{ j.id }}">
-              <button class="btn btn-ghost" style="height:28px;padding:0 10px;font-size:10px;display:flex;align-items:center;gap:5px" onclick="event.stopPropagation();toggleEditDropdown('{{ j.id }}')">Actions <svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M19 9l-7 7-7-7"/></svg></button>
-              <div class="edit-dropdown-menu">
-                <button class="edit-dropdown-item delete" onclick="event.stopPropagation();openDeleteConfirm('{{ j.id }}','{{ j.job_title }}')"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path stroke-linecap="round" d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m5 0V4a1 1 0 011-1h2a1 1 0 011 1v2"/></svg>Delete Posting</button>
+            <span class="job-status-badge badge-{{ j.status }}">
+              {% if j.status == 'open' %}Open{% elif j.status == 'draft' %}Draft{% else %}Closed{% endif %}
+            </span>
+          </div>
+          <div class="job-meta-row">
+            <span class="job-meta-item"><svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>{{ j.location }}</span>
+            <span class="job-meta-item"><svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 6v6l4 2"/></svg>{{ j.duration }}</span>
+            <span class="job-meta-item"><svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>{{ j.stipend }}</span>
+          </div>
+          <div class="job-skills-row">
+            {% for skill in j.skills_list %}<span class="skill-tag">{{ skill }}</span>{% endfor %}
+          </div>
+          <div class="job-card-footer">
+            <div class="job-apps-count"><strong>{{ j.application_set.count }}</strong> Application{{ j.application_set.count|pluralize }} · Deadline: {% if j.deadline %}{{ j.deadline|date:"M d, Y" }}{% else %}—{% endif %}</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              {% if j.status != 'closed' %}
+              <div class="edit-dropdown-wrap" id="dropdown-{{ j.id }}">
+                <button class="btn btn-ghost" style="height:28px;padding:0 10px;font-size:10px;display:flex;align-items:center;gap:5px" onclick="event.stopPropagation();toggleEditDropdown('{{ j.id }}')">Edit <svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M19 9l-7 7-7-7"/></svg></button>
+                <div class="edit-dropdown-menu">
+                  <button class="edit-dropdown-item" onclick="event.stopPropagation();openEditForm('{{ j.id }}')"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Edit Details</button>
+                  <button class="edit-dropdown-item" onclick="event.stopPropagation();closeJobToStatus('{{ j.id }}')"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>Close Posting</button>
+                  <div class="edit-dropdown-divider"></div>
+                  <button class="edit-dropdown-item delete" onclick="event.stopPropagation();openDeleteConfirm('{{ j.id }}','{{ j.job_title }}')"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path stroke-linecap="round" d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m5 0V4a1 1 0 011-1h2a1 1 0 011 1v2"/></svg>Delete Posting</button>
+                </div>
               </div>
+              {% else %}
+              <div class="edit-dropdown-wrap" id="dropdown-{{ j.id }}">
+                <button class="btn btn-ghost" style="height:28px;padding:0 10px;font-size:10px;display:flex;align-items:center;gap:5px" onclick="event.stopPropagation();toggleEditDropdown('{{ j.id }}')">Actions <svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M19 9l-7 7-7-7"/></svg></button>
+                <div class="edit-dropdown-menu">
+                  <button class="edit-dropdown-item delete" onclick="event.stopPropagation();openDeleteConfirm('{{ j.id }}','{{ j.job_title }}')"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path stroke-linecap="round" d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m5 0V4a1 1 0 011-1h2a1 1 0 011 1v2"/></svg>Delete Posting</button>
+                </div>
+              </div>
+              {% endif %}
             </div>
-            {% endif %}
           </div>
         </div>
-      </div>
-      {% empty %}
-      <div class="empty-state" style="grid-column:1/-1" id="empty-jobs-msg">
-        <div class="empty-state-icon">📋</div>
-        <div class="empty-state-title">No job postings yet</div>
-        <div class="empty-state-sub">Click "New Job Post" to create your first listing</div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════ SHORTLIST ══════════════════════════════ -->
-  <div class="page" id="page-shortlist">
-    <div class="ph">
-      <div>
-        <h1 class="ph-title">Applications</h1>
-        <p class="ph-sub">Manage approved and rejected applications · Last updated today</p>
-      </div>
-      <div class="ph-actions">
-        <button class="btn btn-outline"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>Export All</button>
-        <button class="btn btn-dark">Generate Report</button>
-      </div>
-    </div>
-    <div class="mini-stats">
-      <div class="mini-stat"><div class="mini-stat-val">{{ total_apps_count }}</div><div class="mini-stat-lbl">Total</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">{{ approved_apps_count }}</div><div class="mini-stat-lbl">Approved</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">{{ rejected_apps_count }}</div><div class="mini-stat-lbl">Rejected</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">{{ pending_apps_count }}</div><div class="mini-stat-lbl">Pending</div></div>
-    </div>
-    <div class="tabs">
-      <div class="tabs-left">
-        <button class="tab active" onclick="switchTab(this,'approved-section')">
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" d="M5 13l4 4L19 7"/>
-          </svg>
-          Approved <span class="tab-count">{{ approved_apps_count }}</span>
-        </button>
-
-        <button class="tab" onclick="switchTab(this,'rejected-section')">
-          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
-          </svg>
-          Rejected <span class="tab-count">{{ rejected_apps_count }}</span>
-        </button>
-      </div>
-
-      <!-- Job Filter -->
-      <div class="tabs-right">
-        <select class="job-filter" onchange="filterByJob(this.value)">
-        <option value="all">All Jobs</option>
-
-        {% for job in hr_jobs %}
-        <option value="{{ job.id }}">
-        {{ job.job_title }} - {{ job.company_id.company_name }}
-        </option>
+        {% empty %}
+        <div class="empty-state" style="grid-column:1/-1" id="empty-jobs-msg">
+          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-title">No job postings yet</div>
+          <div class="empty-state-sub">Click "New Job Post" to create your first listing</div>
+        </div>
         {% endfor %}
+      </div>
+    </div>
 
+    <!-- ══════════════════════════════ SHORTLIST ══════════════════════════════ -->
+    <div class="page" id="page-shortlist">
+      <div class="ph">
+        <div>
+          <h1 class="ph-title">Applications</h1>
+          <p class="ph-sub">Manage approved and rejected applications · Last updated today</p>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-outline"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>Export All</button>
+          <button class="btn btn-dark">Generate Report</button>
+        </div>
+      </div>
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="mini-stat-val">{{ total_apps_count }}</div><div class="mini-stat-lbl">Total</div></div>
+        <div class="mini-stat"><div class="mini-stat-val">{{ approved_apps_count }}</div><div class="mini-stat-lbl">Approved</div></div>
+        <div class="mini-stat"><div class="mini-stat-val">{{ rejected_apps_count }}</div><div class="mini-stat-lbl">Rejected</div></div>
+        <div class="mini-stat"><div class="mini-stat-val">{{ pending_apps_count }}</div><div class="mini-stat-lbl">Pending</div></div>
+      </div>
+      <div class="tabs">
+        <div class="tabs-left">
+          <button class="tab active" onclick="switchTab(this,'approved-section')">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" d="M5 13l4 4L19 7"/>
+            </svg>
+            Approved <span class="tab-count">{{ approved_apps_count }}</span>
+          </button>
+
+          <button class="tab" onclick="switchTab(this,'rejected-section')">
+            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+            Rejected <span class="tab-count">{{ rejected_apps_count }}</span>
+          </button>
+        </div>
+
+       <div class="tabs-right">
+        <select class="job-filter" onchange="filterByJob(this.value); console.log('filterByJob called with:', this.value);">
+          <option value="all">All Jobs</option>
+          {% for job in hr_jobs %}
+          <option value="{{ job.id }}">
+            {{ job.job_title }} - {{ job.company_id.company_name }}
+          </option>
+          {% endfor %}
         </select>
 
         <button id="scheduleBtn" class="btn btn-dark" onclick="openProcessModal()" style="display:none;">
           Schedule Process
         </button>
       </div>
-    </div>
+      </div>
 
-    <!-- APPROVED SECTION -->
-    <div class="section active" id="approved-section">
-      <div class="app-cards-grid">
-        {% for app in approved_apps %}
-        <div class="approved-card" data-job="{{ app.job_id }}">
-          <div class="ac-header">
-            <div class="ac-avatar" style="background:#3d3d3d">{{ app.name|slice:":2"|upper }}</div>
-            <div style="flex:1;min-width:0">
-              <div class="ac-name">{{ app.name }}</div>
-              <div class="ac-meta">{{ app.course }} · {{ app.email }}</div>
-              <div class="ac-tags">
-                <span class="ac-tag">{{ app.course }}</span>
-                {% if app.cv_url %}<span class="ac-tag">CV ✓</span>{% else %}<span class="ac-tag">No CV</span>{% endif %}
+      <!-- APPROVED SECTION -->
+      <div class="section active" id="approved-section">
+        <div class="app-cards-grid">
+          {% for app in approved_apps %}
+          <div class="approved-card" data-job="{{ app.job_id }}" data-app-id="{{ app.app_id }}">
+            <div class="ac-header">
+              <div class="ac-avatar" style="background:#3d3d3d">{{ app.name|slice:":2"|upper }}</div>
+              <div style="flex:1;min-width:0">
+                <div class="ac-name">{{ app.name }}</div>
+                <div class="ac-meta">{{ app.course }} · {{ app.email }}</div>
+                <div class="ac-tags">
+                  <span class="ac-tag">{{ app.course }}</span>
+                  {% if app.cv_url %}<span class="ac-tag">CV ✓</span>{% else %}<span class="ac-tag">No CV</span>{% endif %}
+                </div>
+              </div>
+              <span class="ac-status-badge badge-approved">Approved</span>
+            </div>
+            <div class="ac-body">
+              <div class="ac-role-row">
+                <div class="ac-company-icon">{{ app.company|slice:":3"|upper }}</div>
+                <div>
+                  <div class="ac-role-title">{{ app.job_title }}</div>
+                  <div class="ac-role-sub">{{ app.company }} · {{ app.location }} · {{ app.duration }} · {{ app.stipend }}</div>
+                </div>
+              </div>
+              <div class="ac-info-row">
+                <div class="ac-info-item"><div class="ac-info-label">Approved On</div><div class="ac-info-val">{{ app.approved_on|date:"M d, Y" }}</div></div>
+                <div class="ac-info-item"><div class="ac-info-label">Applied On</div><div class="ac-info-val">{{ app.applied_on|date:"M d, Y" }}</div></div>
+                <div class="ac-info-item"><div class="ac-info-label">Letter Status</div><div class="ac-info-val" style="color:var(--success);font-weight:700">Sent ✓</div></div>
+              </div>
+              <div class="ac-footer">
+                <div class="ac-date">Offer accepted</div>
+                <div class="ac-actions">
+                  <button class="btn btn-outline" onclick="openLetterModal('{{app.name}}','{{app.job_title}}','{{app.company}}','{{app.location}}','{{app.duration}}','{{app.stipend}}','{{app.skills}}')">Offer Letter</button>
+                  <button class="btn btn-dark" onclick="openDetailModal({type:'approved',name:'{{app.name}}',init:'{{app.name|slice:":2"|upper}}',email:'{{app.email}}',course:'{{app.course}}',year:'{{app.year|default:""}}',role:'{{app.job_title}}',company:'{{app.company}}',location:'{{app.location}}',duration:'{{app.duration}}',stipend:'{{app.stipend}}',appliedOn:'{{app.applied_on|date:"M d, Y"}}',decisionOn:'{{app.approved_on|date:"M d, Y"}}',score:'80',skills:'{{app.skills|default:""}}',letterData:{name:'{{app.name}}',role:'{{app.job_title}}',company:'{{app.company}}',location:'{{app.location}}',duration:'{{app.duration}}',stipend:'{{app.stipend}}',skills:'{{app.skills|default:""}}'} })">View →</button>
+                </div>
               </div>
             </div>
-            <span class="ac-status-badge badge-approved">Approved</span>
           </div>
-          <div class="ac-body">
-            <div class="ac-role-row">
-              <div class="ac-company-icon">{{ app.company|slice:":3"|upper }}</div>
-              <div>
-                <div class="ac-role-title">{{ app.job_title }}</div>
-                <div class="ac-role-sub">{{ app.company }} · {{ app.location }} · {{ app.duration }} · {{ app.stipend }}</div>
-              </div>
-            </div>
-            <div class="ac-info-row">
-              <div class="ac-info-item"><div class="ac-info-label">Approved On</div><div class="ac-info-val">{{ app.approved_on|date:"M d, Y" }}</div></div>
-              <div class="ac-info-item"><div class="ac-info-label">Applied On</div><div class="ac-info-val">{{ app.applied_on|date:"M d, Y" }}</div></div>
-              <div class="ac-info-item"><div class="ac-info-label">Letter Status</div><div class="ac-info-val" style="color:var(--success);font-weight:700">Sent ✓</div></div>
-            </div>
-            <div class="ac-footer">
-              <div class="ac-date">Offer accepted</div>
-              <div class="ac-actions">
-                <button class="btn btn-outline" onclick="openLetterModal('{{app.name}}','{{app.job_title}}','{{app.company}}','{{app.location}}','{{app.duration}}','{{app.stipend}}','{{app.skills}}')">Offer Letter</button>
-                <button class="btn btn-dark" onclick="openDetailModal({type:'approved',name:'{{app.name}}',init:'{{app.name|slice:":2"|upper}}',email:'{{app.email}}',course:'{{app.course}}',year:'{{app.year|default:""}}',role:'{{app.job_title}}',company:'{{app.company}}',location:'{{app.location}}',duration:'{{app.duration}}',stipend:'{{app.stipend}}',appliedOn:'{{app.applied_on|date:"M d, Y"}}',decisionOn:'{{app.approved_on|date:"M d, Y"}}',score:'80',skills:'{{app.skills|default:""}}',letterData:{name:'{{app.name}}',role:'{{app.job_title}}',company:'{{app.company}}',location:'{{app.location}}',duration:'{{app.duration}}',stipend:'{{app.stipend}}',skills:'{{app.skills|default:""}}'} })">View →</button>
-              </div>
-            </div>
-          </div>
+          {% empty %}<p>No approved applications yet.</p>{% endfor %}
         </div>
-        {% empty %}<p>No approved applications yet.</p>{% endfor %}
+      </div>
+
+      <!-- REJECTED SECTION -->
+      <div class="section" id="rejected-section">
+        <div class="app-cards-grid">
+          {% for app in rejected_apps %}
+          <div class="approved-card rejected-card" data-job="{{ app.job_title }}">
+            <div class="ac-header">
+              <div class="ac-avatar" style="background:#ebebeb;color:#a0a0a0">{{ app.name|slice:":2"|upper }}</div>
+              <div style="flex:1;min-width:0">
+                <div class="ac-name" style="color:#3d3d3d">{{ app.name }}</div>
+                <div class="ac-meta">{{ app.course }} · {{ app.email }}</div>
+                <div class="ac-tags"><span class="ac-tag">{{ app.course }}</span></div>
+              </div>
+              <span class="ac-status-badge badge-rejected">Rejected</span>
+            </div>
+            <div class="ac-body">
+              <div class="ac-role-row">
+                <div class="ac-company-icon" style="font-size:9px;color:var(--muted)">{{ app.company|slice:":3"|upper }}</div>
+                <div>
+                  <div class="ac-role-title" style="color:var(--mid);text-decoration:line-through">{{ app.job_title }}</div>
+                  <div class="ac-role-sub">{{ app.company }} · {{ app.location }} · {{ app.duration }} · {{ app.stipend }}</div>
+                </div>
+              </div>
+              <div class="ac-info-row">
+                <div class="ac-info-item"><div class="ac-info-label">Rejected On</div><div class="ac-info-val" style="color:var(--muted)">{{ app.rejected_on|date:"M d, Y" }}</div></div>
+                <div class="ac-info-item"><div class="ac-info-label">Applied On</div><div class="ac-info-val" style="color:var(--muted)">{{ app.applied_on|date:"M d, Y" }}</div></div>
+                <div class="ac-info-item"><div class="ac-info-label">Feedback</div><div class="ac-info-val" style="color:var(--danger);font-weight:700">Sent</div></div>
+              </div>
+              <div class="ac-footer">
+                <div class="ac-date">Reason: {{ app.reason }}</div>
+                <div class="ac-actions">
+                  <button class="btn btn-danger-soft" onclick="openFeedbackModal('{{app.name}}','{{app.name|slice:":2"|upper}}','{{app.job_title}}','{{app.company}}','{{app.reason}}')">Feedback</button>
+                  <button class="btn btn-ghost" onclick="openDetailModal({type:'rejected',name:'{{app.name}}',init:'{{app.name|slice:":2"|upper}}',email:'{{app.email}}',course:'{{app.course}}',year:'{{app.year}}',role:'{{app.job_title}}',company:'{{app.company}}',location:'{{app.location}}',duration:'{{app.duration}}',stipend:'{{app.stipend}}',appliedOn:'{{app.applied_on|date:"M d, Y"}}',decisionOn:'{{app.rejected_on|date:"M d, Y"}}',score:'65',skills:'{{app.skills|default:""}}',feedback:'{{app.reason}}'})">View →</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% empty %}<p>No rejected applications yet.</p>{% endfor %}
+        </div>
       </div>
     </div>
 
-    <!-- REJECTED SECTION -->
-    <div class="section" id="rejected-section">
-      <div class="app-cards-grid">
-        {% for app in rejected_apps %}
-        <div class="approved-card rejected-card" data-job="{{ app.job_title }}">
-          <div class="ac-header">
-            <div class="ac-avatar" style="background:#ebebeb;color:#a0a0a0">{{ app.name|slice:":2"|upper }}</div>
-            <div style="flex:1;min-width:0">
-              <div class="ac-name" style="color:#3d3d3d">{{ app.name }}</div>
-              <div class="ac-meta">{{ app.course }} · {{ app.email }}</div>
-              <div class="ac-tags"><span class="ac-tag">{{ app.course }}</span></div>
-            </div>
-            <span class="ac-status-badge badge-rejected">Rejected</span>
-          </div>
-          <div class="ac-body">
-            <div class="ac-role-row">
-              <div class="ac-company-icon" style="font-size:9px;color:var(--muted)">{{ app.company|slice:":3"|upper }}</div>
-              <div>
-                <div class="ac-role-title" style="color:var(--mid);text-decoration:line-through">{{ app.job_title }}</div>
-                <div class="ac-role-sub">{{ app.company }} · {{ app.location }} · {{ app.duration }} · {{ app.stipend }}</div>
-              </div>
-            </div>
-            <div class="ac-info-row">
-              <div class="ac-info-item"><div class="ac-info-label">Rejected On</div><div class="ac-info-val" style="color:var(--muted)">{{ app.rejected_on|date:"M d, Y" }}</div></div>
-              <div class="ac-info-item"><div class="ac-info-label">Applied On</div><div class="ac-info-val" style="color:var(--muted)">{{ app.applied_on|date:"M d, Y" }}</div></div>
-              <div class="ac-info-item"><div class="ac-info-label">Feedback</div><div class="ac-info-val" style="color:var(--danger);font-weight:700">Sent</div></div>
-            </div>
-            <div class="ac-footer">
-              <div class="ac-date">Reason: {{ app.reason }}</div>
-              <div class="ac-actions">
-                <button class="btn btn-danger-soft" onclick="openFeedbackModal('{{app.name}}','{{app.name|slice:":2"|upper}}','{{app.job_title}}','{{app.company}}','{{app.reason}}')">Feedback</button>
-                <button class="btn btn-ghost" onclick="openDetailModal({type:'rejected',name:'{{app.name}}',init:'{{app.name|slice:":2"|upper}}',email:'{{app.email}}',course:'{{app.course}}',year:'{{app.year}}',role:'{{app.job_title}}',company:'{{app.company}}',location:'{{app.location}}',duration:'{{app.duration}}',stipend:'{{app.stipend}}',appliedOn:'{{app.applied_on|date:"M d, Y"}}',decisionOn:'{{app.rejected_on|date:"M d, Y"}}',score:'65',skills:'{{app.skills|default:""}}',feedback:'{{app.reason}}'})">View →</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        {% empty %}<p>No rejected applications yet.</p>{% endfor %}
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════ RANK LIST ══════════════════════════════ -->
+    <!-- ══════════════════════════════ RANK LIST ══════════════════════════════ -->
   <div class="page" id="page-ranklist">
-    <div class="ph">
-      <div><h1 class="ph-title">Rank List</h1><p class="ph-sub">AI-powered candidate rankings by role match score</p></div>
-      <div class="ph-actions">
-        <select class="form-select" style="width:auto;height:36px;font-size:12px;font-weight:700">
-          <option>All Roles</option>
-          <option>ML Engineer Intern — Microsoft</option>
-          <option>Frontend Developer — Google India</option>
-          <option>Data Analyst — TCS</option>
+
+    <!-- Header -->
+    <div class="ph" style="align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <span style="font-size:11px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted)">Recruitment</span>
+        <h1 class="ph-title" style="margin:0">Rank List</h1>
+        <div id="ranklist-job-pill" style="display:none; align-items:center; gap:6px; background:var(--ghost); border:0.5px solid var(--border); border-radius:20px; padding:4px 12px; width:fit-content; margin-top:2px;">
+          <span style="width:7px; height:7px; border-radius:50%; background:#1D9E75; display:inline-block; flex-shrink:0"></span>
+          <span id="ranklist-job-label" style="font-size:12px; color:var(--muted)">—</span>
+        </div>
+      </div>
+      <div class="ph-actions" style="margin-left:auto">
+        <select class="form-select" id="ranklist-job-select"
+                onchange="filterByJob(this.value)"
+                style="width:auto; height:36px; font-size:12px; font-weight:700">
+          <option value="all">-- Select a Job --</option>
+          {% for job in hr_jobs %}
+          <option value="{{ job.id }}">{{ job.job_title }} — {{ job.company_id.company_name }}</option>
+          {% endfor %}
         </select>
-        <button class="btn btn-outline">Export Ranklist</button>
+        <button class="btn btn-outline" onclick="exportRanklist()">Export Ranklist</button>
       </div>
     </div>
-    <div class="mini-stats">
-      <div class="mini-stat"><div class="mini-stat-val">12</div><div class="mini-stat-lbl">Ranked</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">94%</div><div class="mini-stat-lbl">Top Score</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">81%</div><div class="mini-stat-lbl">Avg Score</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">5</div><div class="mini-stat-lbl">Shortlisted</div></div>
+
+    <!-- Stats Row (hidden until job selected) -->
+    <div id="ranklist-stats" style="display:none; gap:12px; margin-top:1.5rem; flex-wrap:wrap;">
+      <div class="rl-stat-card">
+        <div class="rl-stat-label">Total candidates</div>
+        <div class="rl-stat-val" id="stat-total">—</div>
+      </div>
+      <div class="rl-stat-card">
+        <div class="rl-stat-label">Avg MCQ score</div>
+        <div class="rl-stat-val" id="stat-mcq">—</div>
+      </div>
+      <div class="rl-stat-card">
+        <div class="rl-stat-label">Avg machine test</div>
+        <div class="rl-stat-val" id="stat-machine">—</div>
+      </div>
+      <div class="rl-stat-card">
+        <div class="rl-stat-label">Top score</div>
+        <div class="rl-stat-val" id="stat-top">—</div>
+      </div>
+
+      <button class="btn btn-primary" id="schedule-interview-btn"
+              onclick="openScheduleModal()"
+              style="margin-left:auto; display:none">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" style="margin-right:5px">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        Schedule Interview
+      </button>
     </div>
-    <div style="margin-bottom:20px">
-      <div class="shortlist-section-header" style="border:1px solid var(--ghost);border-bottom:none">All Roles — Ranked by AI Match Score</div>
-      <div id="ranklist-container"></div>
+
+    <!-- Ranklist Table -->
+    <div id="ranklist-container" style="margin-top:1.5rem">
+      <p style="color:var(--muted); padding:32px; text-align:center; font-size:13px">
+        Select a job above to view the rank list.
+      </p>
     </div>
+
   </div>
 
-  <!-- ══════════════════════════════ INTERVIEW SCHEDULE ══════════════════════════════ -->
-  <div class="page" id="page-interviews">
-    <div class="ph">
-      <div><h1 class="ph-title">Interview Schedule</h1><p class="ph-sub">Manage and track all interview rounds</p></div>
-      <div class="ph-actions">
-        <button class="btn btn-outline">Export Schedule</button>
-        <button class="btn btn-dark" onclick="openInterviewForm()"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 4v16m8-8H4"/></svg>Schedule Interview</button>
-      </div>
-    </div>
-    <div class="mini-stats">
-      <div class="mini-stat"><div class="mini-stat-val">4</div><div class="mini-stat-lbl">Today</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">9</div><div class="mini-stat-lbl">This Week</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">2</div><div class="mini-stat-lbl">Technical</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">2</div><div class="mini-stat-lbl">HR Round</div></div>
-    </div>
-    <div class="card" style="margin-bottom:24px">
-      <div class="card-hd">
-        <div class="card-hd-l">
-          <div class="card-icon-wrap"><svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="1"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
-          <div><div class="card-title">February 2025</div><div class="card-sub-text">Interview calendar view</div></div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost" style="height:28px;padding:0 10px;font-size:11px">◀ Prev</button>
-          <button class="btn btn-ghost" style="height:28px;padding:0 10px;font-size:11px">Next ▶</button>
-        </div>
-      </div>
-      <div style="padding:0">
-        <div class="calendar-grid">
-          <div class="cal-day-header">Sun</div><div class="cal-day-header">Mon</div><div class="cal-day-header">Tue</div><div class="cal-day-header">Wed</div><div class="cal-day-header">Thu</div><div class="cal-day-header">Fri</div><div class="cal-day-header">Sat</div>
-          <div class="cal-day other-month"><div class="cal-day-num">26</div></div><div class="cal-day other-month"><div class="cal-day-num">27</div></div><div class="cal-day other-month"><div class="cal-day-num">28</div></div><div class="cal-day other-month"><div class="cal-day-num">29</div></div><div class="cal-day other-month"><div class="cal-day-num">30</div></div><div class="cal-day other-month"><div class="cal-day-num">31</div></div>
-          <div class="cal-day"><div class="cal-day-num">1</div></div><div class="cal-day"><div class="cal-day-num">2</div></div><div class="cal-day"><div class="cal-day-num">3</div></div><div class="cal-day"><div class="cal-day-num">4</div></div><div class="cal-day"><div class="cal-day-num">5</div></div><div class="cal-day"><div class="cal-day-num">6</div><div class="cal-event interview">Priya N.</div></div><div class="cal-day"><div class="cal-day-num">7</div></div>
-          <div class="cal-day"><div class="cal-day-num">8</div></div><div class="cal-day"><div class="cal-day-num">9</div></div><div class="cal-day"><div class="cal-day-num">10</div></div><div class="cal-day"><div class="cal-day-num">11</div></div><div class="cal-day"><div class="cal-day-num">12</div></div><div class="cal-day"><div class="cal-day-num">13</div></div><div class="cal-day"><div class="cal-day-num">14</div></div>
-          <div class="cal-day"><div class="cal-day-num">15</div></div><div class="cal-day"><div class="cal-day-num">16</div></div><div class="cal-day"><div class="cal-day-num">17</div></div><div class="cal-day"><div class="cal-day-num">18</div></div><div class="cal-day"><div class="cal-day-num">19</div><div class="cal-event interview">Ravi S.</div></div><div class="cal-day today"><div class="cal-day-num">20</div><div class="cal-event" style="background:var(--white);color:var(--black)">Arun K.</div></div><div class="cal-day"><div class="cal-day-num">21</div><div class="cal-event pending">Meena R.</div></div>
-          <div class="cal-day"><div class="cal-day-num">22</div></div><div class="cal-day"><div class="cal-day-num">23</div></div><div class="cal-day"><div class="cal-day-num">24</div></div><div class="cal-day"><div class="cal-day-num">25</div></div><div class="cal-day"><div class="cal-day-num">26</div></div><div class="cal-day"><div class="cal-day-num">27</div></div><div class="cal-day"><div class="cal-day-num">28</div></div>
-        </div>
-      </div>
-    </div>
-    <div class="ph" style="margin-bottom:16px;padding-bottom:16px">
-      <div><div class="ph-title" style="font-size:18px">Today's Interviews</div><div class="ph-sub">Feb 20, 2025</div></div>
-    </div>
-    <div class="interview-list">
-      <div class="interview-row">
-        <div><div class="interview-time">10:00 AM</div><div class="interview-time-sub">45 min</div></div>
-        <div class="interview-divider"></div>
-        <div class="interview-details"><div class="interview-name">Arun Kumar</div><div class="interview-meta">ML Engineer Intern · Microsoft · Technical Round 1</div></div>
-        <span class="interview-type type-technical">Technical</span>
-        <span class="s-pill s-scheduled" style="margin-left:8px">Confirmed</span>
-        <div class="action-pair" style="margin-left:8px"><button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:11px">Reschedule</button><button class="btn btn-dark" style="height:30px;padding:0 12px;font-size:11px">Join</button></div>
-      </div>
-      <div class="interview-row">
-        <div><div class="interview-time">11:30 AM</div><div class="interview-time-sub">30 min</div></div>
-        <div class="interview-divider"></div>
-        <div class="interview-details"><div class="interview-name">Priya Nair</div><div class="interview-meta">Frontend Developer Intern · Google India · HR Round</div></div>
-        <span class="interview-type type-hr">HR</span>
-        <span class="s-pill s-scheduled" style="margin-left:8px">Confirmed</span>
-        <div class="action-pair" style="margin-left:8px"><button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:11px">Reschedule</button><button class="btn btn-dark" style="height:30px;padding:0 12px;font-size:11px">Join</button></div>
-      </div>
-      <div class="interview-row">
-        <div><div class="interview-time">2:00 PM</div><div class="interview-time-sub">60 min</div></div>
-        <div class="interview-divider"></div>
-        <div class="interview-details"><div class="interview-name">Meena Raj</div><div class="interview-meta">Backend Developer Intern · Amazon · Technical Round 1</div></div>
-        <span class="interview-type type-technical">Technical</span>
-        <span class="s-pill s-pending" style="margin-left:8px">Pending</span>
-        <div class="action-pair" style="margin-left:8px"><button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:11px">Reschedule</button><button class="btn btn-dark" style="height:30px;padding:0 12px;font-size:11px">Join</button></div>
-      </div>
-      <div class="interview-row">
-        <div><div class="interview-time">4:00 PM</div><div class="interview-time-sub">30 min</div></div>
-        <div class="interview-divider"></div>
-        <div class="interview-details"><div class="interview-name">Ravi Shankar</div><div class="interview-meta">Data Analyst Intern · TCS · Final Round</div></div>
-        <span class="interview-type type-final">Final</span>
-        <span class="s-pill s-approved" style="margin-left:8px">Approved</span>
-        <div class="action-pair" style="margin-left:8px"><button class="btn btn-outline" style="height:30px;padding:0 12px;font-size:11px">View Notes</button></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════ SOCIAL MEDIA ══════════════════════════════ -->
-  <div class="page" id="page-social">
-    <div class="ph">
-      <div><h1 class="ph-title">Social Media</h1><p class="ph-sub">Manage job post announcements across platforms</p></div>
-      <div class="ph-actions">
-        <button class="btn btn-outline">Analytics</button>
-        <button class="btn btn-dark" onclick="openSocialForm()"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 4v16m8-8H4"/></svg>Create Post</button>
-      </div>
-    </div>
-    <div class="mini-stats">
-      <div class="mini-stat"><div class="mini-stat-val">12</div><div class="mini-stat-lbl">Total Posts</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">8</div><div class="mini-stat-lbl">Published</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">3</div><div class="mini-stat-lbl">Scheduled</div></div>
-      <div class="mini-stat"><div class="mini-stat-val">2.4k</div><div class="mini-stat-lbl">Total Reach</div></div>
-    </div>
-    <div class="tabs">
-      <button class="tab active" onclick="filterSocial(this,'all')">All <span class="tab-count">12</span></button>
-      <button class="tab" onclick="filterSocial(this,'linkedin')">LinkedIn <span class="tab-count">5</span></button>
-      <button class="tab" onclick="filterSocial(this,'twitter')">Twitter/X <span class="tab-count">4</span></button>
-      <button class="tab" onclick="filterSocial(this,'instagram')">Instagram <span class="tab-count">3</span></button>
-    </div>
-    <div class="social-post-cards" id="social-cards-container"></div>
-  </div>
-
-  <!-- ══════════════════════════════ STUDENTS ══════════════════════════════ -->
-  <div class="page" id="page-students">
-    <div class="ph">
-      <div><h1 class="ph-title">Students</h1><p class="ph-sub">All registered students on InternHub</p></div>
-    </div>
-    <div class="sf-bar">
-      <div class="sf-search">
-        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-        <input type="text" placeholder="Search students by name or course…">
-      </div>
-    </div>
-    <div class="card">
-      <div style="overflow-x:auto">
-        <table class="app-table">
-          <thead><tr><th>Student</th><th>Course</th><th>CV</th><th>Skills</th><th>Applications</th><th>Registered</th></tr></thead>
-          <tbody>
-            <tr onclick="openModal('Arun Kumar','AK','arun@college.edu','Computer Science','ML Engineer Intern','Microsoft · Hybrid','Jan 22, 2025','87%',['Python','ML','TensorFlow'],'review')"><td><div class="stu-cell"><div class="stu-avatar">AK</div><div><div class="app-student-name">Arun Kumar</div><div class="app-student-meta">arun@college.edu</div></div></div></td><td style="font-size:13px">Computer Science</td><td><span class="s-pill s-approved">Uploaded</span></td><td><div class="skills-wrap"><span class="skill-tag">Python</span><span class="skill-tag">ML</span><span class="skill-tag">+3</span></div></td><td style="font-weight:700;font-size:14px">2</td><td style="font-size:12px;color:var(--muted)">Jan 10, 2025</td></tr>
-            <tr onclick="openModal('Priya Nair','PN','priya@college.edu','Information Technology','Frontend Developer Intern','Google India · Remote','Jan 28, 2025','94%',['React','JavaScript','CSS'],'pending')"><td><div class="stu-cell"><div class="stu-avatar" style="background:var(--mid)">PN</div><div><div class="app-student-name">Priya Nair</div><div class="app-student-meta">priya@college.edu</div></div></div></td><td style="font-size:13px">Information Technology</td><td><span class="s-pill s-approved">Uploaded</span></td><td><div class="skills-wrap"><span class="skill-tag">React</span><span class="skill-tag">CSS</span><span class="skill-tag">+2</span></div></td><td style="font-weight:700;font-size:14px">1</td><td style="font-size:12px;color:var(--muted)">Jan 15, 2025</td></tr>
-            <tr onclick="openModal('Ravi Shankar','RS','ravi@college.edu','Data Science','Data Analyst Intern','TCS · Mumbai','Jan 18, 2025','79%',['Python','SQL','NumPy'],'approved')"><td><div class="stu-cell"><div class="stu-avatar" style="background:var(--subtle)">RS</div><div><div class="app-student-name">Ravi Shankar</div><div class="app-student-meta">ravi@college.edu</div></div></div></td><td style="font-size:13px">Data Science</td><td><span class="s-pill s-approved">Uploaded</span></td><td><div class="skills-wrap"><span class="skill-tag">Python</span><span class="skill-tag">SQL</span><span class="skill-tag">+2</span></div></td><td style="font-weight:700;font-size:14px">1</td><td style="font-size:12px;color:var(--muted)">Jan 08, 2025</td></tr>
-            <tr><td><div class="stu-cell"><div class="stu-avatar" style="background:var(--ghost);color:var(--muted)">KP</div><div><div class="app-student-name">Kiran Patel</div><div class="app-student-meta">kiran@college.edu</div></div></div></td><td style="font-size:13px">AI & ML</td><td><span class="s-pill s-rejected">Missing</span></td><td><div class="skills-wrap"><span class="skill-tag">React</span><span class="skill-tag">Node.js</span></div></td><td style="font-weight:700;font-size:14px">1</td><td style="font-size:12px;color:var(--muted)">Dec 01, 2024</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════ NOTIFICATIONS ══════════════════════════════ -->
-  <div class="page" id="page-notifications">
-    <div class="ph">
-      <div><h1 class="ph-title">Notifications</h1><p class="ph-sub">3 unread alerts</p></div>
-      <button class="btn btn-outline" style="font-size:11px;text-transform:uppercase">Mark all read</button>
-    </div>
-    <div class="card">
-      <div class="card-bd" style="padding:0 24px">
-        <div class="notif-list">
-          <div class="notif-row"><div class="ni-icon" style="background:var(--black)"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg></div><div><div class="ni-text"><strong>New Application!</strong> Priya Nair applied for <strong>Frontend Developer Intern</strong> at Google India.</div><div class="ni-time">2 hours ago</div></div></div>
-          <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="1"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div><div class="ni-text"><strong>Interview Reminder:</strong> 4 interviews scheduled for <strong>today, Feb 20</strong>. Starting at 10:00 AM.</div><div class="ni-time">3 hours ago</div></div></div>
-          <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><path stroke-linecap="square" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg></div><div><div class="ni-text"><strong>5 applications</strong> are awaiting review. Oldest pending since <strong>Jan 22</strong>.</div><div class="ni-time">5 hours ago</div></div></div>
-          <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><path stroke-linecap="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><div><div class="ni-text"><strong>Arun Kumar</strong>'s application has been under review for more than <strong>3 days</strong>.</div><div class="ni-time">1 day ago</div></div></div>
-          <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--muted)" stroke-width="2"><path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div><div><div class="ni-text"><strong>Ravi Shankar</strong> has accepted the offer letter from TCS. Internship confirmed.</div><div class="ni-time">2 days ago</div></div></div>
+    <!-- ══════════════════════════════ INTERVIEW SCHEDULE ══════════════════════════════ -->
+    <div class="page" id="page-interviews">
+      <div class="ph">
+        <div><h1 class="ph-title">Interview Schedule</h1><p class="ph-sub">Manage and track all interview rounds</p></div>
+        <div class="ph-actions">
+          <button class="btn btn-outline">Export Schedule</button>
+          <button class="btn btn-dark" onclick="openInterviewForm()"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 4v16m8-8H4"/></svg>Schedule Interview</button>
         </div>
       </div>
-    </div>
-  </div>
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="mini-stat-val">4</div><div class="mini-stat-lbl">Today</div></div>
+        <div class="mini-stat"><div class="mini-stat-val">9</div><div class="mini-stat-lbl">This Week</div></div>
+        <div class="mini-stat"><div class="mini-stat-val">2</div><div class="mini-stat-lbl">Technical</div></div>
+        <div class="mini-stat"><div class="mini-stat-val">2</div><div class="mini-stat-lbl">HR Round</div></div>
+      </div>
+      <div class="card" style="margin-bottom:24px">
+        <div class="card-hd">
+          <div class="card-hd-l">
+            <div class="card-icon-wrap">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="1"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+              </svg>
+            </div>
+            <div>
+              <div class="card-title" id="cal-month-label">Loading…</div>
+              <div class="card-sub-text">Interview calendar view</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <!-- Month jump buttons -->
+            <button class="btn btn-ghost" style="height:28px;padding:0 10px;font-size:11px"
+                    onclick="changeMonth(-1)">◀ Prev</button>
+            <button class="btn btn-ghost" style="height:28px;padding:0 10px;font-size:11px"
+                    onclick="changeMonth(0)" id="cal-today-btn"
+                    style="display:none">Today</button>
+            <button class="btn btn-ghost" style="height:28px;padding:0 10px;font-size:11px"
+                    onclick="changeMonth(1)">Next ▶</button>
+          </div>
+        </div>
 
-</main>
+        <!-- Calendar Grid -->
+        <div style="padding:0">
+          <div class="calendar-grid" id="calendarGrid">
+            <!-- Day headers -->
+            <div class="cal-day-header">Sun</div>
+            <div class="cal-day-header">Mon</div>
+            <div class="cal-day-header">Tue</div>
+            <div class="cal-day-header">Wed</div>
+            <div class="cal-day-header">Thu</div>
+            <div class="cal-day-header">Fri</div>
+            <div class="cal-day-header">Sat</div>
+            <!-- Days injected by JS -->
+            <div id="calDays" style="display:contents"></div>
+          </div>
+
+          <!-- Loading state -->
+          <div id="calLoading" style="text-align:center;padding:48px;color:var(--muted,#888);font-size:13px">
+            <div id="calSpinner" style="display:inline-block;width:20px;height:20px;border:2px solid #eee;
+                border-top-color:#333;border-radius:50%;animation:spin .7s linear infinite;margin-bottom:8px"></div>
+            <div>Loading calendar…</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ph" style="margin-bottom:16px;padding-bottom:16px">
+        <div><div class="ph-title" style="font-size:18px">Today's Interviews</div>
+          <div class="ph-sub" id="today-date-label"></div>
+        </div>
+      </div>
+            <div style="margin-bottom: 32px;">
+      <h2 style="font-size:16px; font-weight:600; margin-bottom:4px;">Today's Interviews</h2>
+      <p style="font-size:12px; color:#888; margin-bottom:16px;">{{ today_interviews|length }} interview{{ today_interviews|length|pluralize }} scheduled for today</p>
+
+      <div class="interview-list">
+            {% for item in today_interviews %}
+            <div class="interview-row">
+              <div>
+                <div class="interview-time">{{ item.hr_interview_date|date:"h:i A" }}</div>
+                <div class="interview-time-sub">{{ item.hr_interview_date|date:"M d, Y" }}</div>
+              </div>
+              <div class="interview-divider"></div>
+              <div class="interview-details">
+                <div class="interview-name">{{ item.applicant_name }}</div>
+                <div class="interview-meta">{{ item.job_title }} · {{ item.company }} · HR Round</div>
+              </div>
+              <span class="interview-type type-hr">HR</span>
+              {% if item.interview_status == 'active' %}
+                <span class="s-pill s-approved" style="margin-left:8px">Active</span>
+              {% elif item.interview_status == 'waiting' %}
+                <span class="s-pill s-pending" style="margin-left:8px">Waiting</span>
+              {% elif item.interview_status == 'ended' %}
+                <span class="s-pill s-rejected" style="margin-left:8px">Ended</span>
+              {% else %}
+                <span class="s-pill s-scheduled" style="margin-left:8px">Scheduled</span>
+              {% endif %}
+              <div class="action-pair" style="margin-left:8px">
+                {% if item.interview_status != 'ended' %}
+                  <button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:11px">Reschedule</button>
+                  <a href="{{ item.room_url }}" class="btn btn-dark" style="height:30px;padding:0 12px;font-size:11px">Join</a>
+                {% else %}
+                  <button class="btn btn-outline" style="height:30px;padding:0 12px;font-size:11px">View Notes</button>
+                {% endif %}
+              </div>
+            </div>
+            {% empty %}
+              <p style="padding:20px;color:#888;font-size:13px;">No interviews scheduled for today.</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- ===== UPCOMING INTERVIEWS ===== -->
+        <div>
+          <h2 style="font-size:16px; font-weight:600; margin-bottom:4px;">Upcoming Interviews</h2>
+          <p style="font-size:12px; color:#888; margin-bottom:16px;">{{ upcoming_interviews|length }} upcoming interview{{ upcoming_interviews|length|pluralize }}</p>
+
+          <div class="interview-list">
+            {% for item in upcoming_interviews %}
+            <div class="interview-row">
+              <div>
+                <div class="interview-time">{{ item.hr_interview_date|date:"h:i A" }}</div>
+                <div class="interview-time-sub">{{ item.hr_interview_date|date:"M d, Y" }}</div>  <!-- shows date instead of duration -->
+              </div>
+              <div class="interview-divider"></div>
+              <div class="interview-details">
+                <div class="interview-name">{{ item.applicant_name }}</div>
+                <div class="interview-meta">{{ item.job_title }} · {{ item.company }} · HR Round</div>
+              </div>
+              <span class="interview-type type-hr">HR</span>
+              <span class="s-pill s-scheduled" style="margin-left:8px">Scheduled</span>
+              <div class="action-pair" style="margin-left:8px">
+                <button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:11px">Reschedule</button>
+              </div>
+            </div>
+            {% empty %}
+              <p style="padding:20px;color:#888;font-size:13px;">No upcoming interviews.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+  
+      <!-- ══════════════════════════════ SOCIAL MEDIA ══════════════════════════════ -->
+    <div class="page" id="page-social">
+      <div class="ph">
+        <div><h1 class="ph-title">Social Media</h1><p class="ph-sub">Manage job post announcements across platforms</p></div>
+        <div class="ph-actions">
+          <button class="btn btn-outline">Analytics</button>
+          <button class="btn btn-dark" onclick="openSocialForm()"><svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M12 4v16m8-8H4"/></svg>Create Post</button>
+        </div>
+      </div>
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="mini-stat-val">12</div><div class="mini-stat-lbl">Total Posts</div></div>
+        <div class="mini-stat"><div class="mini-stat-val">8</div><div class="mini-stat-lbl">Published</div></div>
+        <div class="mini-stat"><div class="mini-stat-val">3</div><div class="mini-stat-lbl">Scheduled</div></div>
+        <div class="mini-stat"><div class="mini-stat-val">2.4k</div><div class="mini-stat-lbl">Total Reach</div></div>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="filterSocial(this,'all')">All <span class="tab-count">12</span></button>
+        <button class="tab" onclick="filterSocial(this,'linkedin')">LinkedIn <span class="tab-count">5</span></button>
+        <button class="tab" onclick="filterSocial(this,'twitter')">Twitter/X <span class="tab-count">4</span></button>
+        <button class="tab" onclick="filterSocial(this,'instagram')">Instagram <span class="tab-count">3</span></button>
+      </div>
+      <div class="social-post-cards" id="social-cards-container"></div>
+    </div>
+
+    <!-- ══════════════════════════════ STUDENTS ══════════════════════════════ -->
+    <div class="page" id="page-students">
+      <div class="ph">
+        <div><h1 class="ph-title">Students</h1><p class="ph-sub">All registered students on InternHub</p></div>
+      </div>
+      <div class="sf-bar">
+        <div class="sf-search">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" placeholder="Search students by name or course…">
+        </div>
+      </div>
+      <div class="card">
+        <div style="overflow-x:auto">
+          <table class="app-table">
+            <thead><tr><th>Student</th><th>Course</th><th>CV</th><th>Skills</th><th>Applications</th><th>Registered</th></tr></thead>
+            <tbody>
+              {% for u in user %}
+                <tr onclick="openModal('Arun Kumar','AK','arun@college.edu','Computer Science','ML Engineer Intern','Microsoft · Hybrid','Jan 22, 2025','87%',['Python','ML','TensorFlow'],'review')"><td><div class="stu-cell"><div class="stu-avatar">{{ forloop.counter }}</div><div><div class="app-student-name">{{ u.full_name }}</div><div class="app-student-meta">{{ u.Email }}</div></div></div></td><td style="font-size:13px">{{ u.course }}</td><td><span class="s-pill s-approved">{% if u.cv_url %} Uploaded {% else %} Not Uploaded {% endif %} </span></td><td>
+                  <div class="skills-wrap">
+                    {% for skill in u.skills|slice:":3" %}
+                      <span class="skill-tag">{{ skill }}</span>
+                    {% endfor %}
+
+                    {% if u.skills|length > 3 %}
+                      <span class="skill-tag">
+                        +{{ u.skills|length|add:"-3" }}
+                      </span>
+                    {% endif %}
+                  </div>                
+                </td>                  
+                  <td style="font-weight:700;font-size:14px">{{ u.app_count }}</td><td style="font-size:12px;color:var(--muted)">{{ u.reg_date|localtime|date:"F d, Y, h.i A" }}</td></tr>
+              {% endfor %}
+              
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════ NOTIFICATIONS ══════════════════════════════ -->
+    <div class="page" id="page-notifications">
+      <div class="ph">
+        <div><h1 class="ph-title">Notifications</h1><p class="ph-sub">3 unread alerts</p></div>
+        <button class="btn btn-outline" style="font-size:11px;text-transform:uppercase">Mark all read</button>
+      </div>
+      <div class="card">
+        <div class="card-bd" style="padding:0 24px">
+          <div class="notif-list">
+            <div class="notif-row"><div class="ni-icon" style="background:var(--black)"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" d="M5 13l4 4L19 7"/></svg></div><div><div class="ni-text"><strong>New Application!</strong> Priya Nair applied for <strong>Frontend Developer Intern</strong> at Google India.</div><div class="ni-time">2 hours ago</div></div></div>
+            <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="1"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><div><div class="ni-text"><strong>Interview Reminder:</strong> 4 interviews scheduled for <strong>today, Feb 20</strong>. Starting at 10:00 AM.</div><div class="ni-time">3 hours ago</div></div></div>
+            <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><path stroke-linecap="square" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg></div><div><div class="ni-text"><strong>5 applications</strong> are awaiting review. Oldest pending since <strong>Jan 22</strong>.</div><div class="ni-time">5 hours ago</div></div></div>
+            <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--mid)" stroke-width="2"><path stroke-linecap="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></div><div><div class="ni-text"><strong>Arun Kumar</strong>'s application has been under review for more than <strong>3 days</strong>.</div><div class="ni-time">1 day ago</div></div></div>
+            <div class="notif-row"><div class="ni-icon"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="var(--muted)" stroke-width="2"><path stroke-linecap="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div><div><div class="ni-text"><strong>Ravi Shankar</strong> has accepted the offer letter from TCS. Internship confirmed.</div><div class="ni-time">2 days ago</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
 
 <!-- ══════════════════════════════ APPLICANTS MODAL ══════════════════════════════ -->
 <div id="appModal">
@@ -1085,8 +1254,18 @@
         <div class="dm-info-grid">
           <div><div class="dm-info-label">Course</div><div class="dm-info-val" id="dm-course">—</div></div>
           <div><div class="dm-info-label">Year</div><div class="dm-info-val" id="dm-year">—</div></div>
-          <div><div class="dm-info-label">Email</div><div class="dm-info-val" id="dm-email2">—</div></div>
-          <div><div class="dm-info-label">CV Status</div><div class="dm-info-val" style="color:var(--success);font-weight:700">Uploaded ✓</div></div>
+          <div><div class="dm-info-label">Email</div><div class="dm-info-val" id="dm-email2">—</div></div> 
+          <div>
+            <div class="dm-info-label">CV</div>
+            <div class="dm-info-val">
+              <a id="dm-cv-link"
+                target="_blank"
+                class="btn btn-dark"
+                style="height:30px;padding:0 12px;font-size:11px;text-decoration:none">
+                View CV
+              </a>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1193,209 +1372,271 @@ Apply now through InternHub portal! 🎓
 
 
 <!-- ══════════════════════════════ Schedule Process MODAL ══════════════════════════════ -->
-<div class="modal-overlay" id="processModal">
-  <div class="process-modal">
+<div class="modal-overlay" id="processModal" onclick="handleModalOutsideClick(event)">
+  <div class="process-modal" onclick="event.stopPropagation()">
 
-    <div class="process-header">
-      <h3>Selection Process</h3>
-      <span class="close-modal" onclick="closeProcessModal()">✕</span>
+    <!-- Header -->
+    <div class="pm-header">
+      <div class="pm-header-left">
+        <div class="pm-title">Selection Process</div>
+        <div class="pm-job-tag" id="pm-job-tag">—</div>
+      </div>
+      <button class="pm-close" onclick="closeProcessModal()">✕</button>
     </div>
 
-    <div class="process-body">
+    <!-- Body -->
+    <div class="pm-body">
 
-      <div class="process-step">
-        <div class="step-title">MCQ Exam</div>
-        <input type="datetime-local" id="mcq_date">
-        <button id="mcq_btn" onclick="applyProcess('mcq')" class="btn btn-dark">Apply</button>
+      <!-- MCQ -->
+      <div class="pm-stage" id="pm-stage-mcq">
+        <div class="pm-stage-icon">📝</div>
+        <div class="pm-stage-info">
+          <div class="pm-stage-name">MCQ Exam</div>
+          <div class="pm-stage-desc">Auto-graded multiple choice test</div>
+        </div>
+        <div class="pm-stage-right">
+          <input class="pm-date-input" type="datetime-local" id="mcq_date">
+          <button class="pm-stage-btn" id="mcq_action_btn" onclick="handleStageAction('mcq')" style="display:none">Apply</button>
+        </div>
       </div>
 
-      <div class="process-step">
-        <div class="step-title">Machine Test</div>
-        <input type="datetime-local" id="machine_date">
-        <button id="machine_btn" onclick="applyProcess('machine')" class="btn btn-dark">Apply</button>
+      <div class="pm-connector"></div>
+
+      <!-- Machine Test -->
+      <div class="pm-stage" id="pm-stage-machine">
+        <div class="pm-stage-icon">💻</div>
+        <div class="pm-stage-info">
+          <div class="pm-stage-name">Machine Test</div>
+          <div class="pm-stage-desc">Coding challenge — system evaluated</div>
+        </div>
+        <div class="pm-stage-right">
+          <input class="pm-date-input" type="datetime-local" id="machine_date">
+          <button class="pm-stage-btn" id="machine_action_btn" onclick="handleStageAction('machine')" style="display:none">Apply</button>
+        </div>
       </div>
 
-      <div class="process-step">
-        <div class="step-title">HR Interview</div>
-        <input type="datetime-local" id="hr_date">
-        <button id="hr_btn" onclick="applyProcess('hr')" class="btn btn-dark">Apply</button>
+    </div>
+
+    <!-- Footer -->
+    <div class="pm-footer">
+      <div class="pm-footer-status" id="pm-footer-status"></div>
+      <button class="pm-done-btn" onclick="closeProcessModal()">Done</button>
+    </div>
+
+  </div>
+</div>
+<!-- ══════════════════════════════ Schedule Interview MODAL ══════════════════════════════ -->
+<div class="modal-overlay" id="schedule-overlay" onclick="closeScheduleModal()">
+  <div class="process-modal" onclick="event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="pm-header">
+      <div class="pm-header-left">
+        <div class="pm-title">Schedule Interview</div>
+        <div class="pm-job-tag" id="schedule-job-tag">—</div>
+      </div>
+      <button class="pm-close" onclick="closeScheduleModal()">✕</button>
+    </div>
+
+    <!-- Body -->
+    <div class="pm-body">
+      <div class="pm-stage">
+        <div class="pm-stage-icon">📅</div>
+        <div class="pm-stage-info">
+          <div class="pm-stage-name">Interview Date & Time</div>
+          <div class="pm-stage-desc">Set the scheduled date and time</div>
+        </div>
+        <div class="pm-stage-right" style="display:flex; align-items:center; gap:8px;">
+          <input class="pm-date-input" type="datetime-local" id="sch-datetime">
+          <button class="pm-stage-btn remove-btn" id="sch-remove-btn"
+                  onclick="removeSchedule()"
+                  style="display:none; white-space:nowrap;">
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    
+    <div class="pm-footer">
+      <div class="pm-footer-status" id="sch-error" style="color:#c0392b; font-size:12px;"></div>
+      <div style="display:flex; gap:8px;">
+        <button class="pm-done-btn" onclick="closeScheduleModal()" style="background:transparent; border:1px solid #ddd; color:#666;">Done</button>
+        <button class="pm-done-btn" id="sch-confirm-btn" onclick="submitSchedule()">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════ Interview passed/reject MODAL ══════════════════════════════ -->
+<div class="cd-modal-bg" id="cdModalBg" onclick="closeCandidateModal(event)">
+  <div class="cd-modal" id="cdModal" style="background:#fff;border-radius:16px;width:640px;max-width:95vw;max-height:88vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.18)">
+
+    <!-- Black Header -->
+    <div style="background:#111;border-radius:14px 14px 0 0;padding:22px 24px;display:flex;align-items:center;gap:16px">
+      <div id="cdAvatar" style="width:56px;height:56px;border-radius:10px;background:#333;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div id="cdName" style="font-size:20px;font-weight:700;color:#fff"></div>
+        <div id="cdEmail" style="font-size:13px;color:#aaa;margin-top:2px"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <span id="cdCourseBadge" style="padding:3px 12px;background:#222;border:1px solid #444;border-radius:20px;font-size:11px;font-weight:600;color:#ccc;text-transform:uppercase;letter-spacing:.5px"></span>
+          <span id="cdInterviewBadge"></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <a id="cdCvBtn" href="#" target="_blank" onclick="event.stopPropagation()"
+           style="padding:8px 16px;background:#fff;color:#111;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;display:none">
+          View CV
+        </a>
+        <button onclick="document.getElementById('cdModalBg').classList.remove('open')"
+                style="background:#222;border:1px solid #444;color:#aaa;width:32px;height:32px;border-radius:8px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:24px;display:flex;flex-direction:column;gap:22px">
+
+      <!-- Student Details -->
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:12px">Student Details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <div style="font-size:11px;color:#888;margin-bottom:3px">EMAIL</div>
+            <div style="font-size:13px;font-weight:600" id="cdDetailEmail">—</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#888;margin-bottom:3px">PHONE</div>
+            <div style="font-size:13px;font-weight:600" id="cdPhone">—</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#888;margin-bottom:3px">COURSE</div>
+            <div style="font-size:13px;font-weight:600" id="cdCourse">—</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#888;margin-bottom:3px">APPLIED ON</div>
+            <div style="font-size:13px;font-weight:600" id="cdApproved">—</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#888;margin-bottom:3px">INTERVIEW DATE</div>
+            <div style="font-size:13px;font-weight:600" id="cdInterviewDate">—</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#888;margin-bottom:3px">MATCH SCORE</div>
+            <div style="font-size:13px;font-weight:600" id="cdMatchScore">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skills -->
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:10px">Skills</div>
+        <div id="cdSkills" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <div style="height:1px;background:#f0f0f0"></div>
+
+      <!-- Assessment Scores -->
+      <div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:12px">Assessment Scores</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          <div style="border:1px solid #eee;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:22px;font-weight:700" id="cdMcq">—</div>
+            <div style="font-size:10px;color:#888;margin-top:3px;text-transform:uppercase;letter-spacing:.5px">MCQ Score</div>
+            <div style="font-size:10px;color:#aaa;margin-top:2px" id="cdMcqDate"></div>
+          </div>
+          <div style="border:1px solid #eee;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:22px;font-weight:700" id="cdMachine">—</div>
+            <div style="font-size:10px;color:#888;margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Machine Test</div>
+            <div style="font-size:10px;color:#aaa;margin-top:2px" id="cdMachineDate"></div>
+          </div>
+          <div style="border:1px solid #eee;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:22px;font-weight:700" id="cdTotal">—</div>
+            <div style="font-size:10px;color:#888;margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Total %</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HR Feedback (if any) -->
+      <div id="cdFeedbackSection" style="display:none">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:10px">HR Feedback</div>
+        <div id="cdFeedback" style="background:#f8f9fa;border-radius:10px;padding:14px;font-size:13px;line-height:1.7;color:#333"></div>
+      </div>
+
+      <div style="height:1px;background:#f0f0f0"></div>
+
+      <!-- AI Interview Analysis (only if passed) -->
+      <div id="cdAnalysisSection" style="display:none">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:12px">AI Interview Analysis</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+          <div style="border:1px solid #dcfce7;background:#f0fdf4;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:22px;font-weight:700;color:#16a34a" id="cdAiOverall">—</div>
+            <div style="font-size:10px;color:#16a34a;margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Overall</div>
+          </div>
+          <div style="border:1px solid #eee;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:22px;font-weight:700" id="cdAiComm">—</div>
+            <div style="font-size:10px;color:#888;margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Comm.</div>
+          </div>
+          <div style="border:1px solid #eee;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:22px;font-weight:700" id="cdAiTech">—</div>
+            <div style="font-size:10px;color:#888;margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Technical</div>
+          </div>
+          <div style="border:1px solid #eee;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:22px;font-weight:700" id="cdAiConf">—</div>
+            <div style="font-size:10px;color:#888;margin-top:3px;text-transform:uppercase;letter-spacing:.5px">Confidence</div>
+          </div>
+        </div>
+
+        <div style="background:#f8f9fa;border-radius:10px;padding:14px;font-size:13px;line-height:1.7;margin-bottom:12px" id="cdAiSummary"></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:6px">✓ Strengths</div>
+            <div id="cdAiStrengths"></div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#991b1b;margin-bottom:6px">✗ Weaknesses</div>
+            <div id="cdAiWeaknesses"></div>
+          </div>
+        </div>
+
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:14px;font-size:12px;line-height:1.7">
+          <strong>Hiring Notes:</strong> <span id="cdAiNotes"></span>
+        </div>
+
+        <!-- Transcript -->
+
+
+        <div style="height:1px;background:#f0f0f0;margin-top:20px"></div>
+      </div>
+
+      <!-- Offer Letter -->
+      <div id="cdOfferSection" style="display:none">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888;margin-bottom:12px">Offer Letter</div>
+        <button onclick="toggleOfferLetter()"
+                style="padding:10px 20px;background:#111;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+          Generate Offer Letter
+        </button>
+        <div id="offerLetterBox" style="display:none;margin-top:16px;border:1px solid #eee;border-radius:12px;padding:28px;font-size:13px;line-height:1.8">
+          <div style="font-size:18px;font-weight:700;margin-bottom:4px">Offer Letter</div>
+          <div style="font-size:12px;color:#888;margin-bottom:20px" id="olDate"></div>
+          <div id="olBody" style="color:#333;line-height:1.9"></div>
+          <div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee">
+            <div style="font-weight:700">HR Manager</div>
+            <div style="color:#888;font-size:12px">Authorized Signatory</div>
+          </div>
+          <div style="margin-top:16px">
+            <button onclick="printOfferLetter()"
+                    style="padding:8px 18px;border:1px solid #eee;border-radius:8px;font-size:12px;cursor:pointer;background:#fff">
+              Print / Download
+            </button>
+          </div>
+        </div>
       </div>
 
     </div>
   </div>
 </div>
 
-<script>
-  let selectedJobId = null;
-
-  function filterByJob(job){
-
-    selectedJobId = job;
-    const cards = document.querySelectorAll(".approved-card");
-    const scheduleBtn = document.getElementById("scheduleBtn");
-
-    if(job === "all"){
-        scheduleBtn.style.display = "none";
-    }else{
-        scheduleBtn.style.display = "inline-block";
-    }
-
-    cards.forEach(card => {
-
-        const cardJob = card.dataset.job;
-
-        if(job === "all" || cardJob === job){
-            card.style.display = "block";
-        }else{
-            card.style.display = "none";
-        }
-
-    });
-}
-  function openProcessModal(){
-
-    if(!selectedJobId){
-    alert("Select a job first")
-    return
-    }
-    document.getElementById("processModal").style.display="flex"
-    loadProcess(selectedJobId)
-  }
-
-  function closeProcessModal(){
-    document.getElementById("processModal").style.display="none";
-  }
-
-  let processState = {
-    mcq: "apply",
-      machine: "apply",
-      hr: "apply"
-  }
-
-  function applyProcess(type){
-
-    let input = document.getElementById(type+"_date")
-    let btn = document.getElementById(type+"_btn")
-
-    let date = input.value
-
-    if(processState[type] === "apply"){
-      saveProcess(type,date,"apply")
-      btn.innerText="Remove"
-      btn.classList.remove("btn-dark")
-      btn.classList.add("btn-danger")
-
-      processState[type]="remove"
-
-    }
-
-    else if(processState[type] === "update"){
-      saveProcess(type,date,"update")
-
-      btn.innerText="Remove"
-      btn.classList.remove("btn-warning")
-      btn.classList.add("btn-danger")
-
-      processState[type]="remove"
-    }
-    else if(processState[type] === "remove"){
-      saveProcess(type,null,"remove")
-
-      input.value=""
-
-      btn.innerText="Apply"
-      btn.classList.remove("btn-danger")
-      btn.classList.add("btn-dark")
-
-      processState[type]="apply"
-    }
-  }
-  
-  document.querySelectorAll("input[type=datetime-local]").forEach(input=>{
-    input.addEventListener("change",function(){
-        let type = this.id.split("_")[0]
-        let btn = document.getElementById(type+"_btn")
-
-        if(processState[type]==="remove"){
-            btn.innerText="Update"
-            btn.classList.remove("btn-danger")
-            btn.classList.add("btn-warning")
-            processState[type]="update"
-        }
-    })
-  })
-
-  function loadProcess(jobId){
-
-    fetch("/get-process/"+jobId)
-    .then(res=>res.json())
-    .then(data=>{
-
-    if(data.mcq_date){
-    let mcq = data.mcq_date.replace(" ", "T").slice(0,16)
-    document.getElementById("mcq_date").value = mcq
-    document.getElementById("mcq_btn").innerText="Remove"
-    processState.mcq="remove"
-    }
-
-    if(data.machine_test_date){
-    let machine = data.machine_test_date.replace(" ", "T").slice(0,16)
-    document.getElementById("machine_date").value = machine
-    document.getElementById("machine_btn").innerText="Remove"
-    processState.machine="remove"
-    }
-
-    if(data.hr_interview_date){
-    let hr = data.hr_interview_date.replace(" ", "T").slice(0,16)
-    document.getElementById("hr_date").value = hr
-    document.getElementById("hr_btn").innerText="Remove"
-    processState.hr="remove"
-    }
-
-    })
-  }
-
-  function saveProcess(stage,date,action){
-    fetch("/save-process/",{
-
-    method:"POST",
-    headers:{
-    "Content-Type":"application/json",
-    "X-CSRFToken":getCookie("csrftoken")
-    },
-
-    body:JSON.stringify({
-    job_id:selectedJobId,
-    stage:stage,
-    date:date,
-    action:action
-    })
-
-    })
-    .then(res=>res.json())
-    .then(data=>{
-    console.log(data)
-    })
-
-    }
-      
-  function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-  }
-
-
-  
-</script>
 </body>
 </html>

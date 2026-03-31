@@ -26,4 +26,6 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('mcq_exam/', include('mcq_exam.urls')),
     path('m_test/', include('m_test.urls')),
+    path('interview/', include('interview.urls')),
+    
 ] + static(settings.MEDIA_URL, document_root = settings.MEDIA_ROOT)

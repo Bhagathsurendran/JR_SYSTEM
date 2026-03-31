@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.urls import path,include
 from . import views
+from mcq_exam.views import start_exam
+from m_test.views import exam_start
 
 urlpatterns = [
     path('',views.login,name="login"),
@@ -27,7 +29,19 @@ urlpatterns = [
     path("view_applications/<int:job_id>/", views.view_applications, name="view_applications"),
     path("update_application_status/", views.update_application_status, name="update_application_status"),
     path("save-process/", views.save_process, name="save_process"),
-    path("get-process/<int:job_id>/", views.get_process, name="get_process"),
+    path("get-process/<int:id>/", views.get_process, name="get_process"),
     path('mark_all_read/', views.mark_all_read, name='mark_all_read'),
     path('delete_notification/', views.delete_notification, name='delete_notification'),
+        
+    path('mcq_exam/<int:job_id>/<int:user_id>/',start_exam,name='mcq_exam'),
+    path('m_test/<int:job_id>/<int:user_id>/',exam_start,name='machine_test'),
+    
+    path('hr/api/calendar/', views.api_calendar_interviews, name='api_calendar_interviews'),
+    path('get_ranklist/', views.get_ranklist, name='get_ranklist'),
+    
+    # path('assessment/hr/<int:job_id>/',
+    #      # Simple redirect / info page for the HR interview
+    #      include('your_main_app.urls'),
+    #      name='hr_interview'),
 ]
+

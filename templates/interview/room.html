@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>{{ room_title }} — Live Interview</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0d0d0c;--surface:#161614;--surface2:#1e1e1c;--surface3:#252523;
+  --border:#2a2a28;--border2:#3a3a38;
+  --ink:#f0f0eb;--ink2:#ccccca;--ink3:#888886;--ink4:#555552;
+  --green:#4ade80;--red:#f87171;--amber:#fbbf24;--blue:#60a5fa;
+  --radius:10px;--font-mono:'JetBrains Mono',monospace;
+  --sidebar-w:300px;--topbar-h:54px;--controls-h:80px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent}
+.shell{display:flex;flex-direction:column;height:100%;height:100dvh}
+
+/* ── TOPBAR ── */
+.topbar{height:var(--topbar-h);background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;z-index:200}
+.topbar-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.rec-dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:blink 1.5s ease infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.room-name{font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;letter-spacing:-.3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.timer-badge{font-family:var(--font-mono);font-size:11px;color:var(--ink3);
+  border:1px solid var(--border2);padding:3px 10px;border-radius:6px;white-space:nowrap}
+.status-pill{font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  padding:3px 9px;border-radius:20px;border:1px solid;white-space:nowrap}
+.pill-live{color:var(--green);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.08)}
+.pill-wait{color:var(--amber);border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.08)}
+.sidebar-toggle{display:none;width:34px;height:34px;border-radius:8px;border:1px solid var(--border2);
+  background:var(--surface2);color:var(--ink3);cursor:pointer;align-items:center;
+  justify-content:center;flex-shrink:0}
+
+/* ── MAIN ── */
+.main-area{flex:1;display:flex;overflow:hidden;min-height:0;position:relative}
+.video-grid{flex:1;display:grid;grid-template-rows:1fr;grid-template-columns:1fr;
+  gap:6px;padding:10px;background:var(--bg);overflow:hidden;position:relative;min-width:0}
+.video-tile{position:relative;background:#000;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+.video-tile video{width:100%;height:100%;object-fit:cover;display:block}
+.tile-label{position:absolute;bottom:10px;left:12px;font-size:11px;font-weight:600;
+  color:#fff;background:rgba(0,0,0,.55);padding:3px 10px;border-radius:20px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.tile-muted{position:absolute;top:10px;right:10px;opacity:.8}
+.pip{position:absolute;bottom:14px;right:14px;width:clamp(120px,20vw,200px);aspect-ratio:16/9;
+  border-radius:var(--radius);overflow:hidden;border:2px solid var(--border2);background:#000;
+  z-index:10;box-shadow:0 4px 24px rgba(0,0,0,.6);cursor:move}
+.pip video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.pip-label{position:absolute;bottom:4px;left:7px;font-size:9px;color:#fff;
+  background:rgba(0,0,0,.5);padding:2px 7px;border-radius:10px}
+.waiting-overlay{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;
+  background:rgba(13,13,12,.92);z-index:20;border-radius:var(--radius)}
+.waiting-overlay.hidden{display:none}
+.wait-spinner{width:40px;height:40px;border:3px solid var(--border2);
+  border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wait-msg{font-size:14px;color:var(--ink3);text-align:center;padding:0 20px}
+.wait-name{color:var(--ink);font-weight:600}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sidebar-w);background:var(--surface);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;
+  transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:150}
+.sidebar-tabs{display:flex;border-bottom:1px solid var(--border)}
+.stab{flex:1;padding:13px 6px;font-size:9px;font-weight:700;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--ink4);border:none;background:transparent;
+  cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.stab:hover{color:var(--ink2)}
+.stab.active{color:var(--ink);border-bottom-color:var(--ink)}
+.sidebar-pane{display:none;flex:1;flex-direction:column;overflow:hidden}
+.sidebar-pane.active{display:flex}
+.chat-messages{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px;
+  scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.chat-msg{max-width:88%;padding:8px 12px;border-radius:12px;font-size:12.5px;line-height:1.5}
+.chat-msg.me{background:var(--surface3);align-self:flex-end;border-radius:12px 12px 4px 12px}
+.chat-msg.them{background:var(--surface2);border:1px solid var(--border);align-self:flex-start;border-radius:12px 12px 12px 4px}
+.msg-name{font-size:9px;color:var(--ink4);margin-bottom:3px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.chat-input-row{display:flex;gap:6px;padding:10px;border-top:1px solid var(--border)}
+.chat-input{flex:1;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;color:var(--ink);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
+.chat-input:focus{border-color:var(--border2)}
+.send-btn{width:38px;height:38px;padding:0;background:var(--ink);color:var(--bg);border:none;
+  border-radius:8px;cursor:pointer;transition:opacity .15s;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.send-btn:hover{opacity:.8}
+.notes-area{flex:1;display:flex;flex-direction:column;padding:12px;gap:8px}
+.notes-textarea{flex:1;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius);color:var(--ink);font-family:var(--font-mono);
+  font-size:12px;padding:12px;outline:none;resize:none;line-height:1.7}
+.notes-textarea::placeholder{color:var(--ink4)}
+.save-notes-btn{padding:9px;background:var(--surface3);border:1px solid var(--border);
+  border-radius:8px;color:var(--ink3);font-family:'DM Sans',sans-serif;
+  font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;cursor:pointer;transition:all .15s}
+.save-notes-btn:hover{border-color:var(--border2);color:var(--ink)}
+.save-notes-btn.saved{color:var(--green);border-color:var(--green)}
+.participants-list{padding:12px;display:flex;flex-direction:column;gap:6px}
+.participant-row{display:flex;align-items:center;gap:10px;padding:10px 12px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:10px}
+.p-avatar{width:32px;height:32px;border-radius:50%;background:var(--surface3);color:var(--ink2);
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.p-name{flex:1;font-size:13px;font-weight:500}
+.p-role{font-size:9px;letter-spacing:.8px;text-transform:uppercase;color:var(--ink4);margin-top:1px}
+.p-online{width:8px;height:8px;border-radius:50%;background:var(--ink4);flex-shrink:0}
+.p-online.on{background:var(--green);box-shadow:0 0 0 2px rgba(74,222,128,.2)}
+
+/* ══════════════════════════════════════════
+   REDESIGNED CONTROLS BAR
+══════════════════════════════════════════ */
+.controls-bar{
+  height:var(--controls-h);
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  gap:8px;flex-shrink:0;padding:0 20px;z-index:100;
+}
+
+/* Each button + label wrapper */
+.ctrl-wrap{
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+}
+
+/* Base button */
+.ctrl{
+  position:relative;
+  width:48px;height:48px;
+  border-radius:14px;
+  border:1px solid var(--border2);
+  background:var(--surface2);
+  color:var(--ink2);
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .18s, border-color .18s, color .18s, transform .12s, box-shadow .18s;
+  -webkit-tap-highlight-color:transparent;
+  outline:none;
+}
+.ctrl svg{
+  width:20px;height:20px;
+  transition:transform .2s, opacity .2s;
+  flex-shrink:0;
+}
+.ctrl:hover{
+  background:var(--surface3);
+  border-color:var(--border);
+  color:var(--ink);
+  box-shadow:0 2px 12px rgba(0,0,0,.35);
+}
+.ctrl:active{
+  transform:scale(.91);
+}
+
+/* OFF (muted/disabled) state */
+.ctrl.off{
+  background:rgba(248,113,113,.12);
+  border-color:rgba(248,113,113,.5);
+  color:var(--red);
+}
+.ctrl.off:hover{
+  background:rgba(248,113,113,.2);
+  border-color:var(--red);
+}
+
+/* Active (screen sharing / recording) */
+.ctrl.active-screen{
+  background:rgba(96,165,250,.12);
+  border-color:rgba(96,165,250,.5);
+  color:var(--blue);
+}
+
+/* End call — circular red button */
+.ctrl-end{
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  background:#c0392b;
+  border:none;
+  color:#fff;
+  padding:0;
+  box-shadow:0 0 0 4px rgba(192,57,43,.18), 0 4px 18px rgba(192,57,43,.35);
+  transition:background .18s, box-shadow .18s, transform .12s;
+}
+.ctrl-end svg{width:22px;height:22px;transform:rotate(135deg);}
+.ctrl-end:hover{
+  background:#e74c3c;
+  box-shadow:0 0 0 6px rgba(231,76,60,.22), 0 6px 22px rgba(192,57,43,.5);
+}
+.ctrl-end:active{transform:scale(.91);}
+
+/* Record active */
+.ctrl-record-active{
+  background:rgba(248,113,113,.15);
+  border-color:var(--red);
+  color:var(--red);
+  animation:recPulse 1.5s ease infinite;
+}
+@keyframes recPulse{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)}50%{box-shadow:0 0 0 6px rgba(248,113,113,.0)}}
+
+/* Label */
+.ctrl-label{
+  font-size:9px;
+  font-weight:600;
+  color:var(--ink4);
+  letter-spacing:.6px;
+  text-transform:uppercase;
+  text-align:center;
+  white-space:nowrap;
+}
+
+/* Separator */
+.ctrl-sep{
+  width:1px;height:30px;
+  background:var(--border);
+  margin:0 4px;flex-shrink:0;
+}
+
+.sidebar-backdrop{display:none;position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:140;opacity:0;transition:opacity .25s}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  :root{--sidebar-w:100%;--topbar-h:50px;--controls-h:72px}
+  .sidebar-toggle{display:flex}
+  .sidebar{position:absolute;top:0;right:0;bottom:0;width:min(320px,100vw);
+    transform:translateX(100%);border-left:none;border-radius:16px 0 0 16px;
+    box-shadow:-8px 0 40px rgba(0,0,0,.5)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-backdrop{display:block}
+  .sidebar-backdrop.visible{opacity:1}
+  .pip{width:clamp(90px,28vw,140px);bottom:10px;right:10px}
+  .controls-bar{gap:5px;padding:0 10px}
+  .ctrl{width:42px;height:42px;border-radius:12px;}
+  .ctrl svg{width:18px;height:18px;}
+  .ctrl-end{min-width:80px;height:42px;font-size:11px;border-radius:21px;}
+  .ctrl-label{display:none}
+  .ctrl-sep{display:none}
+  .room-name{font-size:12px}
+  .timer-badge{font-size:10px;padding:2px 8px}
+  .status-pill{font-size:8px;padding:2px 7px}
+}
+@media(max-width:480px){
+  .topbar{padding:0 12px;gap:8px}
+  .controls-bar{gap:4px}
+  .ctrl{width:38px;height:38px;border-radius:10px;}
+  .ctrl svg{width:16px;height:16px;}
+  .ctrl-end{min-width:72px;height:38px;padding:0 14px;border-radius:19px;}
+  .video-grid{padding:6px;gap:4px}
+}
+@media(max-height:500px) and (orientation:landscape){
+  :root{--topbar-h:44px;--controls-h:60px}
+  .ctrl{width:36px;height:36px;}
+  .ctrl-end{height:36px;}
+  .pip{width:clamp(80px,18vw,120px)}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="rec-dot"></div>
+      <div class="room-name">{{ room_title }}</div>
+    </div>
+    <div class="topbar-right">
+      <div class="timer-badge" id="callTimer">00:00</div>
+      <div class="status-pill pill-wait" id="statusPill">Connecting…</div>
+      <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="main-area" id="mainArea">
+    <div class="video-grid" id="videoGrid">
+      <div class="video-tile" id="remoteTile">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div class="tile-label" id="remoteName">
+          {% if is_hr %}{{ candidate.full_name }}{% else %}{{ hr_user.full_name }}{% endif %}
+        </div>
+        <div class="tile-muted" id="remoteMuteIcon" style="display:none">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#f87171" stroke-width="2">
+            <line x1="1" y1="1" x2="23" y2="23"/>
+            <path stroke-linecap="round" d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"/>
+            <path stroke-linecap="round" d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23M12 19v4M8 23h8"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="pip" id="localPip">
+        <video id="localVideo" autoplay muted playsinline></video>
+        <div class="pip-label">You</div>
+      </div>
+
+      <div class="waiting-overlay" id="waitingOverlay">
+        <div class="wait-spinner"></div>
+        <div class="wait-msg">Waiting for <span class="wait-name">
+          {% if is_hr %}{{ candidate.full_name }}{% else %}{{ hr_user.full_name }}{% endif %}
+        </span> to join…</div>
+      </div>
+    </div>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-tabs">
+        <button class="stab active" onclick="switchSideTab('chat',this)">Chat</button>
+        <button class="stab" onclick="switchSideTab('people',this)">People</button>
+      </div>
+
+      <div class="sidebar-pane active" id="pane-chat">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chatInput" placeholder="Message…" onkeydown="chatKeydown(event)">
+          <button class="send-btn" onclick="sendChat()">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar-pane" id="pane-people">
+        <div class="participants-list">
+          <div class="participant-row">
+            <div class="p-avatar">
+              {% if is_hr %}{{ hr_user.full_name|slice:":1"|upper }}
+              {% else %}{{ candidate.full_name|slice:":1"|upper }}{% endif %}
+            </div>
+            <div style="flex:1">
+              <div class="p-name">
+                {% if is_hr %}{{ hr_user.full_name }}{% else %}{{ candidate.full_name }}{% endif %}
+                <span style="color:var(--ink4);font-size:11px">(You)</span>
+              </div>
+              <div class="p-role">{% if is_hr %}Interviewer{% else %}Candidate{% endif %}</div>
+            </div>
+            <div class="p-online on"></div>
+          </div>
+          <div class="participant-row" id="peerParticipant">
+            <div class="p-avatar">
+              {% if is_hr %}{{ candidate.full_name|slice:":1"|upper }}
+              {% else %}{{ hr_user.full_name|slice:":1"|upper }}{% endif %}
+            </div>
+            <div style="flex:1">
+              <div class="p-name">
+                {% if is_hr %}{{ candidate.full_name }}{% else %}{{ hr_user.full_name }}{% endif %}
+              </div>
+              <div class="p-role">{% if is_hr %}Candidate{% else %}Interviewer{% endif %}</div>
+            </div>
+            <div class="p-online" id="peerOnlineDot"></div>
+          </div>
+        </div>
+      </div>
+
+      {% if is_hr %}
+      <div class="sidebar-pane" id="pane-notes">
+        <div class="notes-area">
+          <textarea class="notes-textarea" id="notesArea"
+            placeholder="Private notes about this candidate…&#10;Visible only to you.">{{ room_notes }}</textarea>
+          <button class="save-notes-btn" id="saveNotesBtn" onclick="saveNotes()">Save Notes</button>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ══════════════════════ CONTROLS BAR ══════════════════════ -->
+  <div class="controls-bar">
+
+    <!-- Mic -->
+    <div class="ctrl-wrap">
+      <button class="ctrl" id="ctrlMic" onclick="toggleMic()" title="Toggle Microphone">
+        <!-- mic ON icon -->
+        <svg id="iconMicOn" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <rect x="9" y="2" width="6" height="11" rx="3"/>
+          <path stroke-linecap="round" d="M5 10a7 7 0 0014 0M12 19v3M9 22h6"/>
+        </svg>
+        <!-- mic OFF icon (hidden by default) -->
+        <svg id="iconMicOff" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" style="display:none">
+          <line x1="1" y1="1" x2="23" y2="23" stroke-linecap="round"/>
+          <path stroke-linecap="round" d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"/>
+          <path stroke-linecap="round" d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23M12 19v3M9 22h6"/>
+        </svg>
+      </button>
+      <div class="ctrl-label" id="lblMic">Mute</div>
+    </div>
+
+    <!-- Camera -->
+    <div class="ctrl-wrap">
+      <button class="ctrl" id="ctrlCam" onclick="toggleCam()" title="Toggle Camera">
+        <svg id="iconCamOn" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.72v6.56a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
+        </svg>
+        <svg id="iconCamOff" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" style="display:none">
+          <line x1="1" y1="1" x2="23" y2="23" stroke-linecap="round"/>
+          <path stroke-linecap="round" d="M21 21H5a2 2 0 01-2-2V8m4-2h8a2 2 0 012 2v2.17M15 10l4.553-2.276A1 1 0 0121 8.72v6.56"/>
+        </svg>
+      </button>
+      <div class="ctrl-label" id="lblCam">Camera</div>
+    </div>
+
+    <!-- Screen Share -->
+    <div class="ctrl-wrap">
+      <button class="ctrl" id="ctrlScreen" onclick="toggleScreen()" title="Share Screen">
+        <svg id="iconScreenOff" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path stroke-linecap="round" d="M8 21h8M12 17v4"/>
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 10l3-3 3 3M12 7v6"/>
+        </svg>
+        <svg id="iconScreenOn" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" style="display:none">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <path stroke-linecap="round" d="M8 21h8M12 17v4"/>
+          <line x1="4" y1="5" x2="20" y2="17" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div class="ctrl-label" id="lblScreen">Share</div>
+    </div>
+
+    {% if is_hr %}
+    <!-- Record -->
+    <div class="ctrl-wrap">
+      <button class="ctrl" id="ctrlRecord" onclick="toggleRecording()" title="Record Session">
+        <!-- record idle -->
+        <svg id="iconRecIdle" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="8"/>
+          <circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>
+        </svg>
+        <!-- record active (stop square) -->
+        <svg id="iconRecActive" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" style="display:none">
+          <circle cx="12" cy="12" r="8"/>
+          <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+      <div class="ctrl-label" id="lblRecord">Record</div>
+    </div>
+    {% endif %}
+
+    <div class="ctrl-sep"></div>
+
+    <!-- End Call -->
+    <div class="ctrl-wrap">
+      <button class="ctrl ctrl-end" onclick="endCall()" title="End Call">
+        <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+        </svg>
+      </button>
+      <div class="ctrl-label" style="color:var(--red)">End</div>
+    </div>
+
+  </div>
+  <!-- ══════════════════════ /CONTROLS BAR ══════════════════════ -->
+
+</div>
+
+<script>
+const ROOM_ID="{{ room_id }}";
+const IS_HR={{ is_hr|yesno:"true,false" }};
+const MY_NAME="{% if is_hr %}{{ hr_user.full_name }}{% else %}{{ candidate.full_name }}{% endif %}";
+const WS_URL=`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/interview/${ROOM_ID}/`;
+
+// ── Audio Recording ───────────────────────────────────
+let mediaRecorder=null,audioChunks=[],isRecording=false;
+
+function toggleRecording(){
+  if(!IS_HR)return;
+  isRecording?stopRecording():startRecording();
+}
+function startRecording(){
+  if(!IS_HR||!localStream){addSystemMsg('⚠ No audio stream available.');return;}
+  const ctx=new AudioContext(),dest=ctx.createMediaStreamDestination();
+  ctx.createMediaStreamSource(localStream).connect(dest);
+  const rv=document.getElementById('remoteVideo');
+  if(rv.srcObject)ctx.createMediaStreamSource(rv.srcObject).connect(dest);
+  mediaRecorder=new MediaRecorder(dest.stream,{mimeType:'audio/webm'});
+  audioChunks=[];
+  mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
+  mediaRecorder.onstop=()=>uploadRecording();
+  mediaRecorder.start(5000);
+  isRecording=true;
+  const btn=document.getElementById('ctrlRecord');
+  btn.classList.add('ctrl-record-active');
+  document.getElementById('iconRecIdle').style.display='none';
+  document.getElementById('iconRecActive').style.display='';
+  document.getElementById('lblRecord').textContent='Stop';
+  addSystemMsg('Recording started');
+}
+function stopRecording(){
+  if(!IS_HR)return;
+  if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();
+  isRecording=false;
+  const btn=document.getElementById('ctrlRecord');
+  btn.classList.remove('ctrl-record-active');
+  document.getElementById('iconRecIdle').style.display='';
+  document.getElementById('iconRecActive').style.display='none';
+  document.getElementById('lblRecord').textContent='Record';
+  addSystemMsg('Recording stopped — uploading…');
+}
+async function uploadRecording(){
+  if(!IS_HR)return;
+  const blob=new Blob(audioChunks,{type:'audio/webm'});
+  const fd=new FormData();fd.append('audio',blob,`recording_${ROOM_ID}.webm`);
+  try{
+    const res=await fetch(`/interview/save_audio/${ROOM_ID}/`,{method:'POST',headers:{'X-CSRFToken':getCookie('csrftoken')},body:fd});
+    const j=await res.json();
+    addSystemMsg(j.ok?'Recording saved':'Upload failed');
+  }catch(e){addSystemMsg('Upload error: '+e.message);}
+}
+
+function getCookie(name){
+  for(const c of document.cookie.split(';')){
+    const t=c.trim();if(t.startsWith(name+'='))return decodeURIComponent(t.slice(name.length+1));
+  }return null;
+}
+
+const ICE_CONFIG={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
+let pc=null,ws=null,localStream=null,screenStream=null;
+let micOn=true,camOn=true,screenOn=false,callStartTime=null,timerHandle=null;
+
+function toggleSidebar(){
+  const s=document.getElementById('sidebar'),b=document.getElementById('sidebarBackdrop');
+  const open=s.classList.toggle('open');b.classList.toggle('visible',open);
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarBackdrop').classList.remove('visible');
+}
+
+// PiP drag
+(function(){
+  const pip=document.getElementById('localPip');
+  let dragging=false,ox=0,oy=0,sx=0,sy=0;
+  const start=e=>{dragging=true;const t=e.touches?e.touches[0]:e;ox=pip.offsetLeft;oy=pip.offsetTop;sx=t.clientX;sy=t.clientY;pip.style.transition='none';};
+  const move=e=>{if(!dragging)return;e.preventDefault();const t=e.touches?e.touches[0]:e;const dx=t.clientX-sx,dy=t.clientY-sy;const p=pip.parentElement.getBoundingClientRect();const nx=Math.max(0,Math.min(ox+dx,p.width-pip.offsetWidth));const ny=Math.max(0,Math.min(oy+dy,p.height-pip.offsetHeight));pip.style.left=nx+'px';pip.style.top=ny+'px';pip.style.right='auto';pip.style.bottom='auto';};
+  const end=()=>{dragging=false;pip.style.transition='';};
+  pip.addEventListener('mousedown',start);pip.addEventListener('touchstart',start,{passive:false});
+  document.addEventListener('mousemove',move);document.addEventListener('touchmove',move,{passive:false});
+  document.addEventListener('mouseup',end);document.addEventListener('touchend',end);
+})();
+
+async function init(){
+  try{localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});document.getElementById('localVideo').srcObject=localStream;}
+  catch(e){addSystemMsg('Camera/mic access denied: '+e.message);}
+  connectWS();
+}
+function connectWS(){
+  ws=new WebSocket(WS_URL);
+  ws.onopen=()=>{console.log('[WS] Connected');setStatus('Waiting for peer…','wait');};
+  ws.onmessage=async({data})=>{
+    const msg=JSON.parse(data);
+    if(msg.type==='peer-ready'){
+      document.getElementById('waitingOverlay').classList.add('hidden');
+      document.getElementById('peerOnlineDot').classList.add('on');
+      setStatus('Live','live');startCallTimer();
+      addSystemMsg(`${msg.username} joined the room`);
+      if(IS_HR)createOffer();
+    }else if(msg.type==='offer'){await handleOffer(msg.sdp);
+    }else if(msg.type==='answer'){await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+    }else if(msg.type==='ice-candidate'){if(pc)await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+    }else if(msg.type==='peer-disconnected'){
+      document.getElementById('remoteVideo').srcObject=null;
+      document.getElementById('waitingOverlay').classList.remove('hidden');
+      document.getElementById('peerOnlineDot').classList.remove('on');
+      setStatus('Peer disconnected','wait');
+      addSystemMsg(`${msg.username} left the room`);
+    }else if(msg.type==='chat'){addChatMsg(msg.username,msg.text,false);}
+  };
+  ws.onclose=()=>console.log('[WS] Disconnected');
+  ws.onerror=e=>console.error('[WS] Error',e);
+}
+function send(obj){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(obj));}
+function createPC(){
+  pc=new RTCPeerConnection(ICE_CONFIG);
+  if(localStream)localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+  pc.ontrack=e=>{document.getElementById('remoteVideo').srcObject=e.streams[0];};
+  pc.onicecandidate=e=>{if(e.candidate)send({type:'ice-candidate',candidate:e.candidate});};
+  pc.onconnectionstatechange=()=>{
+    if(pc.connectionState==='connected')setStatus('Live','live');
+    else if(['disconnected','failed'].includes(pc.connectionState))setStatus('Connection lost','wait');
+  };
+}
+async function createOffer(){createPC();const o=await pc.createOffer();await pc.setLocalDescription(o);send({type:'offer',sdp:pc.localDescription});}
+async function handleOffer(sdp){createPC();await pc.setRemoteDescription(new RTCSessionDescription(sdp));const a=await pc.createAnswer();await pc.setLocalDescription(a);send({type:'answer',sdp:pc.localDescription});}
+
+function toggleMic(){
+  if(!localStream)return;
+  micOn=!micOn;
+  localStream.getAudioTracks().forEach(t=>t.enabled=micOn);
+  const btn=document.getElementById('ctrlMic');
+  btn.classList.toggle('off',!micOn);
+  document.getElementById('iconMicOn').style.display  = micOn?'':'none';
+  document.getElementById('iconMicOff').style.display = micOn?'none':'';
+  document.getElementById('lblMic').textContent = micOn?'Mute':'Unmute';
+}
+function toggleCam(){
+  if(!localStream)return;
+  camOn=!camOn;
+  localStream.getVideoTracks().forEach(t=>t.enabled=camOn);
+  const btn=document.getElementById('ctrlCam');
+  btn.classList.toggle('off',!camOn);
+  document.getElementById('iconCamOn').style.display  = camOn?'':'none';
+  document.getElementById('iconCamOff').style.display = camOn?'none':'';
+  document.getElementById('lblCam').textContent = camOn?'Camera':'Start Cam';
+}
+async function toggleScreen(){
+  if(!screenOn){
+    try{
+      screenStream=await navigator.mediaDevices.getDisplayMedia({video:true});
+      const st=screenStream.getVideoTracks()[0];
+      if(pc){const s=pc.getSenders().find(s=>s.track?.kind==='video');if(s)s.replaceTrack(st);}
+      document.getElementById('localVideo').srcObject=screenStream;
+      st.onended=()=>stopScreen();
+      screenOn=true;
+      document.getElementById('ctrlScreen').classList.add('active-screen');
+      document.getElementById('iconScreenOff').style.display='none';
+      document.getElementById('iconScreenOn').style.display='';
+      document.getElementById('lblScreen').textContent='Stop';
+    }catch(e){addSystemMsg('Screen share cancelled.');}
+  }else{stopScreen();}
+}
+function stopScreen(){
+  if(screenStream)screenStream.getTracks().forEach(t=>t.stop());
+  screenOn=false;
+  document.getElementById('ctrlScreen').classList.remove('active-screen');
+  document.getElementById('iconScreenOff').style.display='';
+  document.getElementById('iconScreenOn').style.display='none';
+  document.getElementById('lblScreen').textContent='Share';
+  document.getElementById('localVideo').srcObject=localStream;
+  if(pc&&localStream){const s=pc.getSenders().find(s=>s.track?.kind==='video');const ct=localStream.getVideoTracks()[0];if(s&&ct)s.replaceTrack(ct);}
+}
+async function endCall(){
+  if(isRecording)stopRecording();
+  if(localStream)localStream.getTracks().forEach(t=>t.stop());
+  if(screenStream)screenStream.getTracks().forEach(t=>t.stop());
+  if(pc)pc.close();if(ws)ws.close();clearInterval(timerHandle);
+  if(IS_HR)window.location.href=`/interview/ended/${ROOM_ID}/`;
+  else window.location.href='/user_dashboard/';
+}
+function sendChat(){
+  const input=document.getElementById('chatInput');
+  const text=input.value.trim();if(!text)return;
+  send({type:'chat',text});addChatMsg('You',text,true);input.value='';
+}
+function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
+function addChatMsg(name,text,isMe){
+  const div=document.createElement('div');div.className=`chat-msg ${isMe?'me':'them'}`;
+  div.innerHTML=`<div class="msg-name">${esc(name)}</div>${esc(text)}`;
+  const box=document.getElementById('chatMessages');box.appendChild(div);box.scrollTop=box.scrollHeight;
+}
+function addSystemMsg(text){
+  const div=document.createElement('div');
+  div.style.cssText='font-size:11px;color:var(--ink4);text-align:center;padding:4px 0';
+  div.textContent=text;
+  const box=document.getElementById('chatMessages');box.appendChild(div);box.scrollTop=box.scrollHeight;
+}
+async function saveNotes(){
+  const notes=document.getElementById('notesArea').value;
+  const btn=document.getElementById('saveNotesBtn');
+  const res=await fetch(`/interview/notes/${ROOM_ID}/`,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},body:JSON.stringify({notes})});
+  if((await res.json()).ok){
+    btn.textContent='Saved ✓';btn.classList.add('saved');
+    setTimeout(()=>{btn.textContent='Save Notes';btn.classList.remove('saved');},2000);
+  }
+}
+function switchSideTab(tab,el){
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.sidebar-pane').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');const pane=document.getElementById('pane-'+tab);if(pane)pane.classList.add('active');
+}
+function setStatus(text,type){
+  const pill=document.getElementById('statusPill');
+  pill.textContent=text;
+  pill.className='status-pill '+(type==='live'?'pill-live':'pill-wait');
+}
+function startCallTimer(){
+  callStartTime=Date.now();
+  timerHandle=setInterval(()=>{
+    const secs=Math.floor((Date.now()-callStartTime)/1000);
+    const m=String(Math.floor(secs/60)).padStart(2,'0');
+    const s=String(secs%60).padStart(2,'0');
+    document.getElementById('callTimer').textContent=`${m}:${s}`;
+  },1000);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  if(e.key==='m'||e.key==='M')toggleMic();
+  if(e.key==='c'||e.key==='C')toggleCam();
+  if(e.key==='Escape')closeSidebar();
+});
+init();
+</script>
+</body>
+</html>

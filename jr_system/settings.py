@@ -12,6 +12,13 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
+TIME_ZONE = 'Asia/Kolkata'
+USE_TZ = True
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,11 +34,14 @@ SECRET_KEY = 'django-insecure-%h-7%g&4j9t@9)nzxgf+cakhkjnj$zn+)l)3x-!#0bq^y+j^u8
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
+
+CSRF_TRUSTED_ORIGINS = ['https://*.ngrok-free.app']
 
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -47,6 +57,8 @@ INSTALLED_APPS = [
     'mcq_exam',
     'm_test',
     'rest_framework',
+    'channels',
+    'interview',
 ]
 
 MIDDLEWARE = [
@@ -161,3 +173,11 @@ LOGIN_REDIRECT_URL = '/user_dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 SOCIALACCOUNT_LOGIN_ON_GET = True
+
+ASGI_APPLICATION = 'jr_system.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    }
+}

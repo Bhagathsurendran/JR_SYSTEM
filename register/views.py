@@ -1,9 +1,7 @@
-from datetime import datetime
-
 from django.shortcuts import render, redirect ,get_object_or_404
 from django.core.files.storage import FileSystemStorage
 from django.http import HttpResponse, JsonResponse
-from .models import JobProcess, user_detail, Employee, Job ,application,Notification
+from .models import user_detail, Employee, Job ,application,Notification
 from django.utils.crypto import get_random_string
 from django.db.models import Count,Q
 import string
@@ -12,9 +10,18 @@ from django.conf import settings
 import json
 import requests
 import fitz
+import spacy
 import os
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.utils import timezone
+from django.core.mail import EmailMultiAlternatives
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET
+from datetime import datetime
+import pytz
+
+nlp = spacy.load("en_core_web_sm")
 
 # ══════════════════════════════════════════
 # PASTE YOUR REAL VALUES HERE
@@ -43,38 +50,37 @@ def reg(request):
     return render(request, 'reg.html')
 
 def extract_skills_from_cv(cv_file):
-    """Extract skills from uploaded CV PDF file."""
-    try:
-        # Read PDF bytes
-        pdf_bytes = cv_file.read()
-        cv_file.seek(0)  # Reset file pointer after reading
+    """Extract skills from uploaded CV using AI NLP."""
 
-        # Open PDF with PyMuPDF
+    try:
+        pdf_bytes = cv_file.read()
+        cv_file.seek(0)
+
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
-        # Extract all text from all pages
         full_text = ""
         for page in doc:
             full_text += page.get_text()
         doc.close()
 
-        # Convert to lowercase for matching
-        text_lower = full_text.lower()
+        # Run AI NLP model
+        doc_nlp = nlp(full_text)
 
-        # Match against skills list
         found_skills = []
-        for skill in SKILLS_LIST:
-            if skill.lower() in text_lower:
-                # Store in proper case
-                found_skills.append(skill.title())
 
-        # Remove duplicates and return as comma-separated string
+        # Extract important nouns / technical terms
+        for token in doc_nlp:
+            if token.pos_ in ["NOUN", "PROPN"]:
+                if token.text.lower() in [s.lower() for s in SKILLS_LIST]:
+                    found_skills.append(token.text.title())
+
         unique_skills = list(dict.fromkeys(found_skills))
-        return ', '.join(unique_skills)
+        return ", ".join(unique_skills)
 
     except Exception as e:
         print(f"Skill extraction error: {e}")
         return ""
+
 
 def insert_data(request):
     if request.method == "POST":
@@ -136,7 +142,8 @@ def login_user(request):
             request.session['userid'] = user.id
             request.session['role']   = user.role
             request.session['name']   = user.full_name
-
+            print("user number:",user.id)
+            
             if user.role == "user":
                 return redirect('user_dashboard')
             elif user.role == "admin":
@@ -160,13 +167,7 @@ def user_dashboard(request):
     user_id = request.session.get('userid')
 
     notifications = Notification.objects.filter(user_id=user_id).order_by('-created_at')
-    
-    print("165")
-    print(notifications.count())
-    
-    for n in notifications:
-        print(f"Notification: {n.message} (Job: {n.job.job_title if n.job else 'N/A'})")
-    
+        
     user_skills = []
     if user.skills:
         user_skills = [s.strip().lower() for s in user.skills.split(",")]
@@ -194,15 +195,23 @@ def user_dashboard(request):
     ).values_list('job_id_id', flat=True)
 
     applied_job_ids = list(applied_jobs)
+    
+    assessments = get_assessment_context(user)
+    completed_assessments=get_completeAssessment_context(user)
+    
 
     return render(request, "user_dashboard.html", {
-        "user": user,
-        "jobs": jobs,
-        "skills": user_skills,
-        "company": companies,
+        "user":           user,
+        "jobs":           jobs,
+        "skills":         user_skills,
+        "company":        companies,
         "applied_job_ids": applied_job_ids,
-        'notifications': notifications,
-        'unread_count': notifications.filter(is_read=False).count(),
+        "notifications":  notifications,
+        "unread_count":   notifications.filter(is_read=False).count(),
+        "assessments":    assessments,
+        "has_assessment": len(assessments) > 0,
+        "completed_assessments":completed_assessments,
+        "has_completed":len(completed_assessments) > 0,
     })
     
 @require_POST
@@ -243,96 +252,160 @@ def admin_dashboard(request):
     })
 
 def hr_dashboard(request):
-
     company = Employee.objects.all()
     hr_id = request.session.get('userid')
-    print(f"HR ID in session: {hr_id}")
+    
     job_queryset = Job.objects.all().order_by('id').annotate(
         app_count=Count('application', filter=Q(application__status='pending'))
     )
+
+    hr_data = user_detail.objects.get(id=hr_id)
+    hr_jobs = Job.objects.filter(hr_id=hr_id, status='open').select_related('company_id')
     
-    hr_jobs = Job.objects.filter(hr_id=1, status='open').select_related('company_id')
+    user_data = user_detail.objects.filter(role='user').annotate(app_count=Count('application'))
     
+    for u in user_data: 
+        if u.skills:
+            u.skills = [s.strip() for s in u.skills.split(',')]
+    
+    
+    pending_list= application.objects.filter(status='pending').order_by('-applied_at')
+   
 
     job_list = []
     for j in job_queryset:
-        if j.skills:
-            j.skills_list = [s.strip() for s in j.skills.split(',') if s.strip()]
-        else:
-            j.skills_list = []
+        j.skills_list = [s.strip() for s in j.skills.split(',') if s.strip()] if j.skills else []
         job_list.append(j)
 
-    # ⭐ NEW PART — APPROVED APPLICATIONS
-    approved_apps = application.objects.filter(status='approved').select_related('user_id', 'job_id').order_by('-applied_at')
+    # ── APPROVED APPLICATIONS ──────────────────────────
+    approved_apps = application.objects.filter(
+        status='approved'
+    ).select_related('user_id', 'job_id').order_by('-applied_at')
+    
+    completed_interview=application.objects.filter(
+        status='interview_completed'
+    )
 
     approved_list = []
     for app in approved_apps:
-
         user = app.user_id
         job  = app.job_id
         approved_list.append({
-            "job_id": job.id,
-            "name": user.full_name,
-            "email": user.Email,
-            "course": user.course,
-            "cv_url": user.cv_url,  # Just to show how to access CV URL if needed
-            "skills": user.skills,
-            "applied_on": app.applied_at,
-            "approved_on": app.updated_at if hasattr(app,'updated_at') else app.applied_at,
-            "job_title": job.job_title,
-            "company": job.company_id.company_name if job.company_id else "N/A",
-            "location": job.location,
-            "duration": job.duration,
-            "stipend": job.stipend,
+            "app_id":     app.id,         
+            "job_id":     job.id,
+            "name":       user.full_name,
+            "email":      user.Email,
+            "course":     user.course,
+            "cv_url":     user.cv_url,
+            "skills":     user.skills,
+            "applied_on":  app.applied_at,
+            "approved_on": app.applied_at,
+            "job_title":   job.job_title,
+            "match_score" : app.match_score,
+            "company":     job.company_id.company_name if job.company_id else "N/A",
+            "location":    job.location,
+            "duration":    job.duration,
+            "stipend":     job.stipend,
+            "req_skill": job.skills,
+            # ⭐ schedule status for showing indicator on card
+            "has_mcq":     bool(app.mcq_date),
+            "has_machine": bool(app.machine_test_date),
+            "has_hr":      bool(app.hr_interview_date),
         })
 
+    # ── REJECTED APPLICATIONS ─────────────────────────
+    rejected_apps = application.objects.filter(
+        status='rejected'
+    ).select_related('user_id', 'job_id').order_by('-applied_at')
 
-     # =====================================================
-    # ⭐ REJECTED APPLICATIONS  (NEW PART)
-    # =====================================================
-        rejected_apps = application.objects.filter(status='rejected') \
-            .select_related('user_id', 'job_id') \
-            .order_by('-applied_at')
+    rejected_list = []
+    for app in rejected_apps:
+        user = app.user_id
+        job  = app.job_id
+        rejected_list.append({
+            "job_id":     job.id,
+            "name":       user.full_name,
+            "email":      user.Email,
+            "course":     user.course,
+            "year":       getattr(user, "year", ""),
+            "skills":     user.skills,
+            "applied_on":  app.applied_at,
+            "rejected_on": app.applied_at,
+            "reason":      getattr(app, "feedback", "Insufficient skill match"),
+            "job_title":   job.job_title,
+            "company":     job.company_id.company_name if job.company_id else "N/A",
+            "location":    job.location,
+            "duration":    job.duration,
+            "stipend":     job.stipend,
+        })
 
-        rejected_list = []
-        for app in rejected_apps:
-            user = app.user_id
-            job  = app.job_id
+    # ── INTERVIEW SCHEDULE ────────────────────────────
+    today = timezone.localdate()
 
-            rejected_list.append({
-                "job_id": job.id,
-                "name": user.full_name,
-                "email": user.Email,
-                "course": user.course,
-                "year": getattr(user, "year", ""),
-                "skills": user.skills,
-                "applied_on": app.applied_at,
-                "rejected_on": app.updated_at if hasattr(app,'updated_at') else app.applied_at,
-                "reason": getattr(app, "feedback", "Insufficient skill match"),
-                "job_title": job.job_title,
-                "company": job.company_id.company_name if job.company_id else "N/A",
-                "location": job.location,
-                "duration": job.duration,
-                "stipend": job.stipend,
-            })
+    scheduled_apps = application.objects.filter(
+        job_id__hr_id=hr_id,
+        status='approved',
+        hr_interview_date__isnull=False   # only those with HR date set
+    ).select_related('user_id', 'job_id', 'job_id__company_id').order_by('hr_interview_date')
 
+    today_interviews    = []
+    upcoming_interviews = []
+
+    for app in scheduled_apps:
+        entry = {
+            "app_id":            app.id,
+            "applicant_name":    app.user_id.full_name,
+            "applicant_email":   app.user_id.Email,
+            "job_title":         app.job_id.job_title,
+            "company":           app.job_id.company_id.company_name if app.job_id.company_id else "N/A",
+            "duration":          app.job_id.duration,
+            "hr_interview_date": app.hr_interview_date,
+            "mcq_date":          app.mcq_date,
+            "machine_test_date": app.machine_test_date,
+            "mcq_score":         app.mcq_score,
+            "machine_test_score":app.machine_test_score,
+            "room_url":          app.get_room_url(),
+        }
+
+        if app.hr_interview_date.date() == today:
+            today_interviews.append(entry)
+        elif app.hr_interview_date.date() > today:
+            upcoming_interviews.append(entry)
+
+    app_list=application.objects.all()
+    
+    for u in app_list: 
+        if u.job_id.skills:
+            u.job_id.skills = [s.strip() for s in u.job_id.skills.split(',')]
+            
+    
     return render(request, 'hr_dashboard.html', {
-        'company': company,
-        'job': job_list,
-        'approved_apps': approved_list,  
-        'rejected_apps': rejected_list, 
-        'hr_jobs': hr_jobs,
-        'job_total': job_queryset.count(),
-        'job_open': job_queryset.filter(status='open').count(),
-        'job_draft': job_queryset.filter(status='draft').count(),
-        'job_closed': job_queryset.filter(status='closed').count(),
-        'total_apps_count': application.objects.count(),
+        'user':                user_data,
+        'hr':                  hr_data,
+        'company':             company,
+        'job':                 job_list,
+        'applications' :       app_list,     
+        'approved_apps':       approved_list,
+        'rejected_apps':       rejected_list,
+        'pending_apps':        pending_list,
+        'hr_jobs':             hr_jobs,
+        'today_interviews':    today_interviews,
+        'upcoming_interviews': upcoming_interviews,
+        'today_count':         len(today_interviews),
+        'upcoming_count':      len(upcoming_interviews),
+        'job_total':           job_queryset.count(),
+        'job_open':            job_queryset.filter(status='open').count(),
+        'job_draft':           job_queryset.filter(status='draft').count(),
+        'job_closed':          job_queryset.filter(status='closed').count(),
+        'total_apps_count':    application.objects.count(),
         'approved_apps_count': len(approved_list),
         'rejected_apps_count': len(rejected_list),
-        'pending_apps_count': application.objects.filter(status='pending').count(),
+        'pending_apps_count':  application.objects.filter(status='pending').count(),
+        'completed_interview_count': completed_interview.count(),
     })
 
 # ─── PASSWORD ───────────────────────────
+
 def change_password(request):
     if not request.session.get('userid'):
         return JsonResponse({'status': 'error', 'message': 'Login required'})
@@ -391,7 +464,6 @@ def update_profile(request):
         user.save()
     return redirect('dashboard')
 
-
 def get_user(request, id):
     try:
         u = user_detail.objects.get(id=id)
@@ -407,7 +479,6 @@ def get_user(request, id):
     except user_detail.DoesNotExist:
         return JsonResponse({'error': 'Not found'}, status=404)
 
-
 def edit_user(request, id):
     if request.method == "POST":
         try:
@@ -422,7 +493,6 @@ def edit_user(request, id):
             return JsonResponse({'success': False, 'message': 'User not found'})
     return JsonResponse({'success': False})
 
-
 def delete_user(request, id):
     try:
         u = user_detail.objects.get(id=id)
@@ -430,7 +500,6 @@ def delete_user(request, id):
     except user_detail.DoesNotExist:
         pass
     return redirect('admin_dashboard')
-
 
 # ─── COMPANY CRUD ───────────────────────
 def add_company(request):
@@ -463,7 +532,6 @@ def view_company(request, id):
     except Employee.DoesNotExist:
         return JsonResponse({"error": "Not found"}, status=404)
 
-
 def edit_company(request, id):
     if request.method == "POST":
         try:
@@ -485,7 +553,6 @@ def edit_company(request, id):
             return JsonResponse({"success": False, "message": "Company not found"})
     return JsonResponse({"success": False})
 
-
 def delete_company(request, id):
     if request.method == "POST":
         try:
@@ -494,7 +561,6 @@ def delete_company(request, id):
         except Employee.DoesNotExist:
             return JsonResponse({"success": False})
     return JsonResponse({"success": False})
-
 
 # ─── JOB CRUD ───────────────────────────
 def add_job(request):
@@ -524,7 +590,6 @@ def add_job(request):
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)})
     return JsonResponse({"success": False})
-
 
 def edit_job(request):
     if request.method == "POST":
@@ -714,7 +779,7 @@ def apply_job(request):
 def toggle_apply_job(request):
     if request.method == "POST":
         user_id = request.session.get('userid')
-        job_id = request.POST.get('job_id')
+        job_id  = request.POST.get('job_id')
 
         user_obj = user_detail.objects.get(id=user_id)
         job_obj  = Job.objects.get(id=job_id)
@@ -723,15 +788,31 @@ def toggle_apply_job(request):
             user_id=user_obj,
             job_id=job_obj
         ).first()
+
         if existing:
             existing.delete()
-            return JsonResponse({"status":"removed"})
+            return JsonResponse({"status": "removed"})
         else:
+            user_skills = []
+            if user_obj.skills:
+                user_skills = [s.strip().lower() for s in user_obj.skills.split(",")]
+
+            job_skills = []
+            if job_obj.skills:
+                job_skills = [s.strip().lower() for s in job_obj.skills.split(",")]
+
+            if job_skills:
+                common = set(user_skills) & set(job_skills)
+                match_score = int((len(common) / len(job_skills)) * 100)
+            else:
+                match_score = 0
+
             application.objects.create(
                 user_id=user_obj,
-                job_id=job_obj
+                job_id=job_obj,
+                match_score=match_score 
             )
-            return JsonResponse({"status":"applied"})
+            return JsonResponse({"status": "applied", "match_score": match_score})
     
 def view_applications(request, job_id):
 
@@ -749,7 +830,6 @@ def view_applications(request, job_id):
         
     return JsonResponse({"applications": data})
 
-
 @csrf_exempt
 def update_application_status(request):
     if request.method == "POST":
@@ -765,102 +845,200 @@ def update_application_status(request):
         return JsonResponse({"success": True})
 
 def save_process(request):
+    try:
+        data    = json.loads(request.body)
+        job_id  = data.get("job_id")
+        app_id  = data.get("app_id")
+        stage   = data.get("stage")
+        date    = data.get("date")
+        action  = data.get("action")
+        slots   = data.get("slots", [])
 
-    data = json.loads(request.body)
+        print("=== RECEIVED SLOTS ===")
+        for s in slots:
+            print(f"  app_id={s.get('app_id')}  datetime={s.get('datetime')}  rank={s.get('rank')}")
+        print("======================")
 
-    job_id = int(data.get("job_id"))
-    stage = data.get("stage")
-    date = data.get("date")
-    action = data.get("action")
+        ist = pytz.timezone('Asia/Kolkata')
 
-    process, created = JobProcess.objects.get_or_create(job_id=job_id)
+        field_map = {
+            "mcq":     "mcq_date",
+            "machine": "machine_test_date",
+            "hr":      "hr_interview_date"
+        }
+        stage_labels = {
+            "mcq":     "MCQ Test",
+            "machine": "Machine Test",
+            "hr":      "HR Interview"
+        }
 
-    # Convert date string to datetime
-    if date:
-        date = datetime.strptime(date, "%Y-%m-%dT%H:%M")
+        def parse_dt(dt_str):
+            """Parse datetime string and localize to IST."""
+            naive = datetime.strptime(dt_str[:16], "%Y-%m-%dT%H:%M")
+            return ist.localize(naive)
 
-    # APPLY / UPDATE
-    if action in ["apply", "update"]:
+        if stage not in field_map:
+            return JsonResponse({"status": "error", "message": "Invalid stage"}, status=400)
 
-        if stage == "mcq":
-            process.mcq_date = date
+        # ══════════════════════════════════════════════════════
+        # HR STAGE WITH SLOTS → save individual time per app
+        # ══════════════════════════════════════════════════════
+        if stage == "hr" and slots:
+            processed_apps = []
+            job    = None
+            message = ""
 
-        elif stage == "machine":
-            process.machine_test_date = date
+            for slot in slots:
+                slot_app_id   = slot.get("app_id")
+                slot_datetime = slot.get("datetime")
 
-        elif stage == "hr":
-            process.hr_interview_date = date
+                if not slot_app_id:
+                    continue
 
-        process.save()
+                try:
+                    app = application.objects.select_related('user_id', 'job_id').get(id=slot_app_id)
+                except application.DoesNotExist:
+                    continue
 
-        # ── NOTIFICATIONS ──
-        stage_labels = {"mcq": "MCQ Test", "machine": "Machine Test", "hr": "HR Interview"}
-        job = process.job
-        formatted_date = date.strftime("%B %d, %Y at %I:%M %p")
-        message = (f"📅 {stage_labels.get(stage)} for '{job.job_title}' has been "
-                   f"{'scheduled' if action == 'apply' else 'rescheduled'} on {formatted_date}.")
-        approved_apps = application.objects.filter(job_id=job, status='approved').select_related('user_id')
-        Notification.objects.bulk_create([
-            Notification(user=app.user_id, job=job, message=message, is_read=False)
-            for app in approved_apps
-        ])
-        # ── END NOTIFICATIONS ──
+                job  = app.job_id
+                user = app.user_id
+
+                if action == "remove":
+                    app.hr_interview_date = None
+                    app.save()
+                    message = f"❌ {stage_labels['hr']} for '{job.job_title}' has been cancelled."
+                else:
+                    if not slot_datetime:
+                        continue
+                    parsed    = parse_dt(slot_datetime)        # ← IST localized
+                    app.hr_interview_date = parsed
+                    app.save()
+                    formatted = parsed.strftime("%B %d, %Y at %I:%M %p")
+                    verb      = "scheduled" if action == "apply" else "rescheduled"
+                    rank      = slot.get("rank", "")
+                    message   = (
+                        f"📅 HR Interview for '{job.job_title}' has been {verb}.\n"
+                        f"Your slot: {formatted} IST (Rank #{rank})"
+                    )
+
+                Notification.objects.create(user=user, job=job, message=message, is_read=False)
+                processed_apps.append(app)
+
+            if processed_apps and job:
+                send_notification_emails(
+                    processed_apps,
+                    subject=f"InternHub — {stage_labels['hr']}",
+                    message=message,
+                    stage_label=stage_labels['hr'],
+                    job=job,
+                    action=action
+                )
+
+            return JsonResponse({"status": "success"})
+
+        # ══════════════════════════════════════════════════════
+        # HR STAGE REMOVE (no slots) → clear all in job
+        # ══════════════════════════════════════════════════════
+        if stage == "hr" and action == "remove" and job_id:
+            apps = application.objects.select_related('user_id', 'job_id').filter(
+                job_id=job_id,
+                status='approved'
+            )
+            if not apps.exists():
+                return JsonResponse({"status": "error", "message": "No applications found"}, status=404)
+
+            job     = apps.first().job_id
+            message = f"❌ HR Interview for '{job.job_title}' has been cancelled."
+
+            for app in apps:
+                app.hr_interview_date = None
+                app.save()
+                Notification.objects.create(user=app.user_id, job=job, message=message, is_read=False)
+
+            send_notification_emails(
+                list(apps),
+                subject=f"InternHub — {stage_labels['hr']}",
+                message=message,
+                stage_label=stage_labels['hr'],
+                job=job,
+                action=action
+            )
+            return JsonResponse({"status": "success"})
+
+        # ══════════════════════════════════════════════════════
+        # MCQ / MACHINE — original logic with IST fix
+        # ══════════════════════════════════════════════════════
+        if job_id:
+            apps = application.objects.select_related('user_id', 'job_id').filter(
+                job_id=job_id,
+                status='approved'
+            )
+            if not apps.exists():
+                return JsonResponse({"status": "error", "message": "No applications found"}, status=404)
+        else:
+            apps = application.objects.select_related('user_id', 'job_id').filter(id=app_id)
+            if not apps.exists():
+                return JsonResponse({"status": "error", "message": "Application not found"}, status=404)
+
+        job     = apps.first().job_id
+        message = ""
+
+        for app in apps:
+            user = app.user_id
+            if action in ["apply", "update"]:
+                if not date:
+                    return JsonResponse({"status": "error", "message": "Date required"}, status=400)
+                parsed    = parse_dt(date)                     # ← IST localized
+                setattr(app, field_map[stage], parsed)
+                app.save()
+                formatted = parsed.strftime("%B %d, %Y at %I:%M %p")
+                verb      = "scheduled" if action == "apply" else "rescheduled"
+                message   = f"📅 {stage_labels[stage]} for '{job.job_title}' has been {verb} on {formatted} IST."
+                Notification.objects.create(user=user, job=job, message=message, is_read=False)
+
+            elif action == "remove":
+                setattr(app, field_map[stage], None)
+                app.save()
+                message = f"❌ {stage_labels[stage]} for '{job.job_title}' has been cancelled."
+                Notification.objects.create(user=user, job=job, message=message, is_read=False)
+
         send_notification_emails(
-            approved_apps,
-            subject=f"InternHub: {stage_labels.get(stage)} — {job.job_title}",
+            list(apps),
+            subject=f"InternHub — {stage_labels[stage]}",
             message=message,
-            stage_label=stage_labels.get(stage),
+            stage_label=stage_labels[stage],
             job=job,
             action=action
         )
-    # REMOVE
-    elif action == "remove":
 
-        if stage == "mcq":
-            process.mcq_date = None
+        return JsonResponse({"status": "success"})
 
-        elif stage == "machine":
-            process.machine_test_date = None
-
-        elif stage == "hr":
-            process.hr_interview_date = None
-
-        # ── NOTIFICATIONS ──
-        stage_labels = {"mcq": "MCQ Test", "machine": "Machine Test", "hr": "HR Interview"}
-        job = process.job
-        message = f"❌ {stage_labels.get(stage)} for '{job.job_title}' has been cancelled."
-        approved_apps = application.objects.filter(job_id=job, status='approved').select_related('user_id')
-        Notification.objects.bulk_create([
-            Notification(user=app.user_id, job=job, message=message, is_read=False)
-            for app in approved_apps
-        ])
-        # ── END NOTIFICATIONS ──
-        
-        send_notification_emails(
-            approved_apps,
-            subject=f"InternHub: {stage_labels.get(stage)} Cancelled — {job.job_title}",
-            message=message,
-            stage_label=stage_labels.get(stage),
-            job=job,
-            action="remove"
-        )
-                
-        # delete row if all empty
-        if not any([
-            process.mcq_date,
-            process.machine_test_date,
-            process.hr_interview_date
-        ]):
-            process.delete()
-        else:
-            process.save()
-
-    return JsonResponse({"status": "success"})
-
-from django.core.mail import EmailMultiAlternatives
-
-def send_notification_emails(approved_apps, subject, message, stage_label, job, action):
+    except Exception as e:
+        print("ERROR in save_process:", e)
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
     
+def get_process(request, id):
+    try:
+        if request.GET.get("type") == "job":
+            app = application.objects.filter(
+                job_id=id,
+                status='approved'
+            ).first()
+            if not app:
+                return JsonResponse({"mcq_date": None, "machine_test_date": None, "hr_interview_date": None})
+        else:
+            app = application.objects.get(id=id)
+
+        return JsonResponse({
+            "mcq_date":          app.mcq_date.strftime("%Y-%m-%d %H:%M") if app.mcq_date else None,
+            "machine_test_date": app.machine_test_date.strftime("%Y-%m-%d %H:%M") if app.machine_test_date else None,
+            "hr_interview_date": app.hr_interview_date.strftime("%Y-%m-%d %H:%M") if app.hr_interview_date else None,
+            "room_url":          app.get_room_url(),
+        })
+    except application.DoesNotExist:
+        return JsonResponse({"mcq_date": None, "machine_test_date": None, "hr_interview_date": None})
+    
+def send_notification_emails(approved_apps, subject, message, stage_label, job, action):  
     for app in approved_apps:
         user = app.user_id
         if not user.Email:
@@ -1006,23 +1184,304 @@ def send_notification_emails(approved_apps, subject, message, stage_label, job, 
         )
         email_msg.attach_alternative(html_content, "text/html")
         email_msg.send(fail_silently=True)
-        
-def get_process(request,job_id):
+
+def get_assessment_context(user):
+    approved_apps = application.objects.filter(
+        user_id=user,
+        status='approved'
+    ).select_related('job_id')
+
+    assessments = []
+    for app in approved_apps:
+        # only include if at least one date is scheduled
+        if not any([app.mcq_date, app.machine_test_date, app.hr_interview_date]):
+            continue
+
+        assessments.append({
+            'job':               app.job_id,
+            'mcq_date':          app.mcq_date,
+            'machine_test_date': app.machine_test_date,
+            'hr_interview_date': app.hr_interview_date,
+            'mcq_mark':          app.mcq_score,
+            'machine_mark':      app.machine_test_score,
+            'room_url':          app.get_room_url(),
+        })
+
+    return assessments
+
+def get_completeAssessment_context(user):
+    approved_apps = application.objects.filter(
+        user_id=user,
+        status='interview_completed'
+    ).select_related('job_id')
+
+    assessments = []
+    for app in approved_apps:
+        if not any([app.mcq_date, app.machine_test_date, app.hr_interview_date]):
+            continue
+
+        assessments.append({
+            'job':               app.job_id,
+            'mcq_date':          app.mcq_date,
+            'machine_test_date': app.machine_test_date,
+            'hr_interview_date': app.hr_interview_date,
+            'mcq_mark':          app.mcq_score,
+            'machine_mark':      app.machine_test_score,
+            'room_url':          app.get_room_url(),
+            'interview_feedback': app.interview_feedback,
+        })
+
+    return assessments
+
+def api_calendar_interviews(request):
+    hr_id = request.session.get('userid')
+    if not hr_id:
+        return JsonResponse({'error': 'Not authenticated'}, status=401)
+
+    import datetime as dt
+    import calendar as cal
+
+    _today = dt.date.today()
+
     try:
-        process = JobProcess.objects.get(job_id=job_id)
+        year  = int(request.GET.get('year',  _today.year))
+        month = int(request.GET.get('month', _today.month))
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Invalid'}, status=400)
 
-        data = {
-            "mcq_date": process.mcq_date,
-            "machine_test_date": process.machine_test_date,
-            "hr_interview_date": process.hr_interview_date
+    # ── month events ──
+    month_apps = application.objects.filter(
+        job_id__hr_id=hr_id,
+        status='approved',
+        hr_interview_date__year=year,
+        hr_interview_date__month=month,
+    ).select_related('user_id', 'job_id', 'job_id__company_id').order_by('hr_interview_date')
+
+    events = []
+    for app in month_apps:
+        events.append({
+            'id':        app.id,
+            'date':      app.hr_interview_date.strftime('%Y-%m-%d'),
+            'time':      app.hr_interview_date.strftime('%I:%M %p'),
+            'day':       app.hr_interview_date.day,
+            'candidate': app.user_id.full_name,
+            'job_title': app.job_id.job_title,
+            'company':   app.job_id.company_id.company_name if app.job_id.company_id else 'N/A',
+            'status':    'not_started',
+            'room_url':  app.get_room_url(),
+        })
+
+    # ── today events ──
+    today_apps = application.objects.filter(
+        job_id__hr_id=hr_id,
+        status='approved',
+        hr_interview_date__date=_today,
+    ).select_related('user_id', 'job_id', 'job_id__company_id').order_by('hr_interview_date')
+
+    today_events = []
+    for app in today_apps:
+        today_events.append({
+            'id':        app.id,
+            'time':      app.hr_interview_date.strftime('%I:%M %p'),
+            'candidate': app.user_id.full_name,
+            'job_title': app.job_id.job_title,
+            'company':   app.job_id.company_id.company_name if app.job_id.company_id else 'N/A',
+            'status':    'not_started',
+            'room_url':  app.get_room_url(),
+        })
+
+    # ── week count ──
+    week_start = _today - dt.timedelta(days=_today.weekday())
+    week_end   = week_start + dt.timedelta(days=6)
+    week_count = application.objects.filter(
+        job_id__hr_id=hr_id,
+        status='approved',
+        hr_interview_date__date__gte=week_start,
+        hr_interview_date__date__lte=week_end,
+    ).count()
+
+    return JsonResponse({
+        'year':          year,
+        'month':         month,
+        'month_name':    cal.month_name[month],
+        'days_in_month': cal.monthrange(year, month)[1],
+        'first_weekday': cal.monthrange(year, month)[0],
+        'events':        events,
+        'today_events':  today_events,
+        'stats': {
+            'today': len(today_events),
+            'week':  week_count,
         }
+    })
+    
+def get_ranklist(request):
+    try:
+        job_id = request.GET.get('job_id')
+        applications = application.objects.filter(
+            job_id=job_id, status__in=['approved', 'interview_completed']
+        ).select_related('user_id')
+        for i in applications:
+            print(i.user_id.full_name)
+        
+        students = []
+        for app in applications:
+            user = app.user_id
+            students.append({
+                'name':             app.user_id.full_name,
+                'email':            app.user_id.Email,
+                'course':           app.user_id.course,
+                'phone':            app.user_id.phoneno,
+                'skills':           app.user_id.skills or '',
+                'cv_url':           app.user_id.cv_url,
+                'profile_url':      app.user_id.profile_url,
+                'mcq_score':        app.mcq_score,
+                'machine_score':    app.machine_test_score,
+                'approved_on':      app.applied_at.strftime('%b %d, %Y') if app.applied_at else '',
+                'mcq_date':         app.mcq_date.strftime('%b %d, %Y') if app.mcq_date else '',
+                'machine_date':     app.machine_test_date.strftime('%b %d, %Y') if app.machine_test_date else '',
+                'interview_date':   app.hr_interview_date.strftime('%b %d, %Y · %I:%M %p') if app.hr_interview_date else '',
+                'interview_result': app.interview_result,
+                'interview_feedback': app.interview_feedback or '',
+                'interview_analysis': app.interview_analysis,
+                'interview_transcript': app.interview_transcript or '',
+                'match_score':      app.match_score,
+                'status':           app.status,
+                'job_title':        app.job_id.job_title,
+                'app_id':           app.id,
+            })
 
-    except JobProcess.DoesNotExist:
+        return JsonResponse({'students': students})
 
-        data = {
-            "mcq_date": None,
-            "machine_test_date": None,
-            "hr_interview_date": None
-        }
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())  # prints full error in terminal
+        return JsonResponse({'error': str(e)}, status=500)    
+ 
+ 
 
-    return JsonResponse(data)
+    
+    """Search/filter applications"""
+    query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', 'all')
+
+    apps = application.objects.select_related(
+        'user_id', 'job_id', 'job_id__company_id'
+    ).all()
+
+    if status_filter != 'all':
+        apps = apps.filter(status=status_filter)
+
+    if query:
+        apps = apps.filter(
+            Q(user_id__full_name__icontains=query) |
+            Q(job_id__job_title__icontains=query) |
+            Q(job_id__company_id__company_name__icontains=query)
+        )
+
+    results = []
+    for app in apps.order_by('-applied_at'):
+        skills = []
+        if app.user_id.skills:
+            skills = [s.strip() for s in app.user_id.skills.split(',') if s.strip()][:3]
+
+        initials = ''.join([n[0].upper() for n in app.user_id.full_name.split()[:2]])
+
+        results.append({
+            'id': app.id,
+            'initials': initials,
+            'student_name': app.user_id.full_name,
+            'student_meta': f"{app.user_id.course} · {app.user_id.Email}",
+            'role': app.job_id.job_title,
+            'company': app.job_id.company_id.company_name,
+            'location': app.job_id.location,
+            'duration': app.job_id.duration,
+            'match_score': app.match_score,
+            'skills': skills,
+            'applied_at': app.applied_at.strftime('%b %d, %Y'),
+            'status': app.status,
+            'cv_url': app.user_id.cv_url,
+        })
+
+    return JsonResponse({'success': True, 'results': results, 'count': len(results)})
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    job_id = request.GET.get('job_id')
+    job_id = request.GET.get('job_id')
+    if not job_id:
+        return JsonResponse({'students': []})
+
+    applications = application.objects.filter(
+        job_id=job_id,
+        status='approved'
+    ).select_related('user_id', 'job_id').order_by('-match_score')
+
+    students = []
+    for app in applications:
+        user = app.user_id
+
+        # Fetch MCQ and machine test scores from SelectionProcess
+        process = application.objects.filter(app_id=app).first()
+        mcq_score     = process.mcq_score     if process else None
+        machine_score = process.machine_score if process else None
+
+        students.append({
+            'name':          user.full_name,
+            'course':        getattr(user, 'course', '—'),
+            'email':         user.email,
+            'score':         app.match_score or 0,
+            'mcq_score':     mcq_score,
+            'machine_score': machine_score,
+            'skills':        [s.strip() for s in (getattr(user, 'skills', '') or '').split(',') if s.strip()],
+            'approved_on':   app.updated_at.strftime('%b %d, %Y') if app.updated_at else '—',
+            'cv_url':        getattr(user, 'cv_url', ''),
+            'app_id':        app.id,
+        })
+
+    return JsonResponse({'students': students})
+    job_id = request.GET.get('job_id')
+    if not job_id:
+        return JsonResponse({'students': []})
+
+    applications = application.objects.filter(
+        job_id=job_id,
+        status='approved'
+    ).select_related('user_id', 'job_id').order_by('-match_score')
+
+    students = []
+    for app in applications:
+        user = app.user_id
+        students.append({
+            'name':        user.full_name,
+            'course':      getattr(user, 'course', '—'),
+            'email':       user.email,
+            'score':       app.match_score or 0,
+            'skills':      [s.strip() for s in (getattr(user, 'skills', '') or '').split(',') if s.strip()],
+            'approved_on': app.updated_at.strftime('%b %d, %Y') if app.updated_at else '—',
+            'cv_url':      getattr(user, 'cv_url', ''),
+            'app_id':      app.id,
+        })
+
+    return JsonResponse({'students': students})

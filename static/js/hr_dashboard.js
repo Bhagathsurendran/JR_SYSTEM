@@ -77,21 +77,16 @@ function openDetailModal(data) {
   document.getElementById('dm-year').textContent     = year     || '—';
   document.getElementById('dm-email2').textContent   = email    || '—';
 
-  /* ── CV Status & viewer button ── */
-  const cvStatusEl = document.getElementById('dm-cv-status');
-  if (cvStatusEl) {
+    /* ── CV link ── */
+
+  const cvLinkEl = document.getElementById('dm-cv-link');
+  if (cvLinkEl) {
     if (cvUrl && cvUrl.trim() !== '') {
-      cvStatusEl.innerHTML =
-        `<span style="color:var(--success,#216321);font-weight:700">Uploaded ✓</span>
-         <button class="dm-cv-btn" onclick="openCvViewer('${esc(cvUrl)}', '${esc(name)}')">
-           <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-             <path stroke-linecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-             <path stroke-linecap="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-           </svg>
-           View CV
-         </button>`;
+      cvLinkEl.href = cvUrl;
+      cvLinkEl.style.display = 'inline-flex';
+      cvLinkEl.style.alignItems = 'center';
     } else {
-      cvStatusEl.innerHTML = `<span style="color:#aaaaaa">Not uploaded</span>`;
+      cvLinkEl.style.display = 'none';
     }
   }
 
@@ -299,21 +294,23 @@ document.addEventListener('keydown', e => {
 
   /* ═══════════════════ TAB SWITCH ═══════════════════ */
   function switchTab(tab, sectionId) {
-
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-
     tab.classList.add('active');
     document.getElementById(sectionId).classList.add('active');
 
-    const scheduleBtn = document.getElementById("scheduleBtn");
+    const scheduleBtn         = document.getElementById("scheduleBtn");
+    const shortlistScheduleBtn = document.getElementById("shortlist-schedule-btn");
+    const jobSelected         = selectedJobId !== null;
 
-    if(sectionId === "rejected-section"){
-        scheduleBtn.style.display = "none";
+    if (sectionId === "rejected-section") {
+      if (scheduleBtn)          scheduleBtn.style.display          = "none";
+      if (shortlistScheduleBtn) shortlistScheduleBtn.style.display = "none";
     } else {
-        scheduleBtn.style.display = "inline-block";
+      // only show if a job is selected
+      if (scheduleBtn)          scheduleBtn.style.display          = jobSelected ? "inline-block" : "none";
+      if (shortlistScheduleBtn) shortlistScheduleBtn.style.display = jobSelected ? "inline-flex"  : "none";
     }
-
   }
 
   /* ═══════════════════ PAGE NAV ═══════════════════ */
@@ -326,6 +323,8 @@ document.addEventListener('keydown', e => {
     closeAllDropdowns();
     if (window.innerWidth <= 768) closeSidebar();
     window.scrollTo(0, 0);
+
+     if (name === 'interviews') initCalendarIfNeeded();
   }
 
   /* ═══════════════════ SIDEBAR ═══════════════════ */
@@ -850,33 +849,6 @@ document.addEventListener('keydown', e => {
     setTimeout(()=>{ t.style.cssText+=';transition:opacity .25s,transform .25s;opacity:0;transform:translateY(12px)'; setTimeout(()=>t.remove(),280); }, 3000);
   }
 
-  /* ═══════════════════ RANK LIST ═══════════════════ */
-  const rankData = [
-    { name:'Priya Nair', init:'PN', course:'IT · 2nd Year', role:'Frontend Dev', company:'Google India', score:94, bg:'var(--mid)' },
-    { name:'Arun Kumar', init:'AK', course:'CS · 3rd Year', role:'ML Engineer', company:'Microsoft', score:87, bg:'var(--black)' },
-    { name:'Meena Raj', init:'MR', course:'CS · 4th Year', role:'Backend Dev', company:'Amazon', score:82, bg:'var(--light)', col:'var(--black)' },
-    { name:'Ravi Shankar', init:'RS', course:'DS · 3rd Year', role:'Data Analyst', company:'TCS', score:79, bg:'var(--subtle)' },
-    { name:'Sanjay T.', init:'ST', course:'CS · 3rd Year', role:'ML Engineer', company:'Microsoft', score:71, bg:'var(--dark)' },
-    { name:'Kiran Patel', init:'KP', course:'AI · 2nd Year', role:'Full Stack Dev', company:'Wipro', score:68, bg:'var(--ghost)', col:'var(--muted)' },
-  ];
-  function renderRankList() {
-    const container=document.getElementById('ranklist-container'); if(!container)return;
-    const medals=['gold','silver','bronze'];
-    container.innerHTML=rankData.map((r,i)=>`
-      <div class="rank-card" onclick="openModal('${r.name}','${r.init}','${r.name.toLowerCase().replace(' ','')}@college.edu','${r.course.split(' · ')[0]}','${r.role} Intern','${r.company}','Jan 2025','${r.score}%',['Python','ML'],'pending')">
-        <div class="rank-num ${medals[i]||''}">${i+1}</div>
-        <div class="stu-avatar" style="background:${r.bg};color:${r.col||'var(--white)'}">${r.init}</div>
-        <div class="rank-bar-wrap">
-          <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <div><div class="app-student-name">${r.name}</div><div class="app-student-meta">${r.course} · ${r.role} at ${r.company}</div></div>
-          </div>
-          <div class="rank-bar-track"><div class="rank-bar-fill" style="width:${r.score}%"></div></div>
-        </div>
-        <div style="text-align:right;flex-shrink:0"><div class="rank-score">${r.score}%</div><div class="rank-score-lbl">Match</div></div>
-        ${i<3?`<button class="btn btn-dark" style="height:30px;padding:0 12px;font-size:11px;flex-shrink:0" onclick="event.stopPropagation()">Shortlist</button>`:`<button class="btn btn-ghost" style="height:30px;padding:0 12px;font-size:11px;flex-shrink:0" onclick="event.stopPropagation()">Review</button>`}
-      </div>`).join('');
-  }
-
   /* ═══════════════════ SOCIAL ═══════════════════ */
   const socialData = [
     { platform:'linkedin', platformName:'LinkedIn', content:'🚀 InternHub is hiring! ML Engineer Intern for a 6-month role at Microsoft (Hybrid, Bangalore). Skills: Python, ML, TensorFlow. Apply today! #Internship #ML #Microsoft', date:'Feb 18, 2025', likes:142, reposts:38, status:'posted' },
@@ -1010,3 +982,1318 @@ document.addEventListener('keydown', e => {
       if(document.getElementById('appModal').style.display==='flex') closeApplicantsModal();
     }
   });
+
+  const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+  function updateStatus(appId, status, btn) {
+    fetch("{% url 'update_application_status' %}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
+      body: JSON.stringify({ id: appId, status: status })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const row = btn.closest('tr');
+        row.style.opacity = '0.4';
+        row.style.pointerEvents = 'none';
+        btn.closest('.action-pair').innerHTML =
+          `<span class="badge-status ${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+      }
+    });
+  }
+
+  function approveAll() {
+    const rows = [...document.querySelectorAll('#page-pending tbody tr')]
+      .filter(r => r.style.pointerEvents !== 'none');
+
+    if (!rows.length) return alert("No pending applications.");
+
+    const requests = rows.map(row =>
+      fetch("{% url 'update_application_status' %}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
+        body: JSON.stringify({ id: row.dataset.appId, status: "approved" })
+      })
+    );
+
+    Promise.all(requests).then(() => {
+      rows.forEach(row => {
+        row.style.opacity = '0.4';
+        row.style.pointerEvents = 'none';
+        const actionPair = row.querySelector('.action-pair');
+        if (actionPair) actionPair.innerHTML = `<span class="badge-status approved">Approved</span>`;
+      });
+    });
+  }
+
+  function markPopupActive(name) {
+    document.querySelectorAll('.popup-item').forEach(p => p.classList.remove('active-page'));
+    var map = { profile: 0, password: 1 };
+    var items = document.querySelectorAll('.popup-item');
+    if (map[name] !== undefined && items[map[name]]) items[map[name]].classList.add('active-page');
+  }
+
+  document.getElementById("passwordForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    let formData = new FormData(this);
+    let msgBox = document.getElementById("passwordMessage");
+    fetch("{% url 'change_password' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+        body: formData
+    }).then(r => r.json()).then(data => {
+        if (data.status === "success") {
+            msgBox.innerHTML = `<div style="background:#e7ffe7;color:#0a7a0a;padding:10px;text-align:center;margin-bottom:12px;">${data.message}</div>`;
+            this.reset();
+        } else {
+            msgBox.innerHTML = `<div style="background:#ffe6e6;color:#d10000;padding:10px;text-align:center;margin-bottom:12px;">${data.message}</div>`;
+        }
+    });
+});
+
+
+  const today = new Date();
+  let curYear  = today.getFullYear();
+  let curMonth = today.getMonth() + 1;
+  window.selectedAppId = null;
+  window.selectedJobId = null;
+  let stageState = { mcq: "empty", machine: "empty", hr: "empty" };
+
+  function openApplicantProcessModal(appId, name, jobTitle) {
+    console.log("appId received:", appId, typeof appId);
+    if (!appId) {
+        alert("No app ID — check your HTML button");
+        return;
+    }
+    selectedAppId = appId;
+
+    ["mcq", "machine", "hr"].forEach(stage => {
+        document.getElementById(stage + "_date").value = "";
+        setStageState(stage, "empty");
+    });
+
+    document.getElementById("pm-job-tag").innerText = name + " · " + jobTitle;
+    document.getElementById("pm-footer-status").innerText = "";
+    document.getElementById("processModal").style.display = "flex";
+    loadProcess(appId);   // ← pass appId not selectedJobId
+  } 
+
+  function handleModalOutsideClick(event) {
+    // only close if clicking the dark overlay itself, not the modal card
+    if (event.target === document.getElementById("processModal")) {
+        closeProcessModal();
+    }
+  }
+
+  // ── MUST BE DEFINED BEFORE handleStageAction ──────────
+  async function sendStageRequest(stage, date, action) {
+    const btn = document.getElementById(stage + "_action_btn");
+    const originalText = btn.innerText;
+    btn.innerText = "...";
+    btn.disabled = true;
+
+    const payload = {
+        job_id: selectedJobId,  // ← job_id instead of app_id
+        stage:  stage,
+        date:   date,
+        action: action
+    };
+
+    try {
+        const res = await fetch("/save-process/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCookie("csrftoken")
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (data.status === "success") {
+            if (action === "remove") {
+                document.getElementById(stage + "_date").value = "";
+                setStageState(stage, "empty");
+                showFooterStatus("Removed ✓", "#dc2626");
+            } else {
+                setStageState(stage, "saved");
+                showFooterStatus("Saved ✓", "#16a34a");
+            }
+        } else {
+            alert("Error: " + (data.message || "Unknown error"));
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    } catch (err) {
+        alert("Something went wrong.");
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+    btn.disabled = false;
+}
+
+  async function handleStageAction(stage) {
+      const dateVal = document.getElementById(stage + "_date").value;
+      const state   = stageState[stage];
+      console.log("handleStageAction:", stage, "state:", state);
+
+      if (state === "saved") {
+          await sendStageRequest(stage, null, "remove");
+      } else if (state === "dirty") {
+          if (!dateVal) { alert("Please select a date."); return; }
+          await sendStageRequest(stage, dateVal, "update");
+      } else if (state === "new") {
+          if (!dateVal) { alert("Please select a date."); return; }
+          await sendStageRequest(stage, dateVal, "apply");
+      }
+  }
+
+
+  function setStageState(stage, state) {
+      stageState[stage] = state;
+      const btn = document.getElementById(stage + "_action_btn");
+      const row = document.getElementById("pm-stage-" + stage);
+      if (!btn || !row) return;
+
+      row.classList.remove("applied");
+      if (state === "empty") {
+          btn.style.display = "none";
+          btn.innerText = "Apply";
+          btn.className = "pm-stage-btn";
+      } else if (state === "saved") {
+          btn.style.display = "inline-block";
+          btn.innerText = "Remove";
+          btn.className = "pm-stage-btn remove-btn";
+          row.classList.add("applied");
+      } else if (state === "dirty") {
+          btn.style.display = "inline-block";
+          btn.innerText = "Update";
+          btn.className = "pm-stage-btn update-btn";
+      } else if (state === "new") {
+          btn.style.display = "inline-block";
+          btn.innerText = "Apply";
+          btn.className = "pm-stage-btn";
+      }
+  }
+
+  function showFooterStatus(msg, color) {
+      const el = document.getElementById("pm-footer-status");
+      if (!el) return;
+      el.innerText = msg;
+      el.style.color = color || "#888";
+      setTimeout(() => { el.innerText = ""; }, 3000);
+  }
+
+function filterByJob(jobId) {
+  selectedJobId = jobId === "all" ? null : parseInt(jobId);
+
+  const shortlistSelect = document.querySelector("#page-shortlist .job-filter");
+  const ranklistSelect  = document.getElementById("ranklist-job-select");
+  if (shortlistSelect) shortlistSelect.value = jobId;
+  if (ranklistSelect)  ranklistSelect.value  = jobId;
+
+  const cards = document.querySelectorAll(".approved-card");
+  cards.forEach(card => {
+    card.style.display = (jobId === "all" || card.dataset.job == jobId) ? "block" : "none";
+  });
+
+  // ── shortlist schedule btn ─────────────────
+  const shortlistScheduleBtn = document.getElementById("shortlist-schedule-btn");
+  if (shortlistScheduleBtn) {
+    shortlistScheduleBtn.style.display = (jobId === "all" || !jobId) ? "none" : "inline-flex";
+  }
+
+  // ── scheduleBtn (process modal) ────────────
+  const scheduleBtn = document.getElementById("scheduleBtn");
+  if (scheduleBtn) {
+    scheduleBtn.style.display = (jobId === "all" || !jobId) ? "none" : "inline-block";
+  }
+
+  // ── ranklist stats + schedule btn ──────────
+  const statsEl          = document.getElementById("ranklist-stats");
+  const rankScheduleBtn  = document.getElementById("schedule-interview-btn");
+  if (jobId === "all" || !jobId) {
+    if (statsEl)         statsEl.style.display         = "none";
+    if (rankScheduleBtn) rankScheduleBtn.style.display  = "none";
+  } else {
+    if (statsEl)         statsEl.style.display         = "flex";
+    if (rankScheduleBtn) rankScheduleBtn.style.display  = "inline-flex";
+  }
+
+  // ── job pill ───────────────────────────────
+  const pill  = document.getElementById("ranklist-job-pill");
+  const label = document.getElementById("ranklist-job-label");
+  if (pill && label) {
+    if (jobId === "all") {
+      pill.style.display = "none";
+    } else {
+      const select = document.getElementById("ranklist-job-select");
+      if (select) {
+        label.textContent  = select.options[select.selectedIndex].text;
+        pill.style.display = "flex";
+      }
+    }
+  }
+
+  renderRankList(jobId);
+}
+
+function renderRankList(jobId) {
+  const container = document.getElementById("ranklist-container");
+  if (!container) return;
+
+  if (!jobId || jobId === "all") {
+    container.innerHTML = `<p style="color:var(--muted);padding:32px;text-align:center;font-size:13px">Select a job above to view the rank list.</p>`;
+    return;
+  }
+
+  container.innerHTML = `<p style="color:var(--muted);padding:32px;text-align:center;font-size:13px">Loading…</p>`;
+
+  fetch(`/get_ranklist/?job_id=${jobId}`)
+    .then(r => r.json())
+    .then(data => {
+      const students = data.students || [];
+      if (!students.length) {
+        container.innerHTML = `<p style="color:var(--muted);padding:32px;text-align:center;font-size:13px">No approved applicants for this job.</p>`;
+        return;
+      }
+      container.innerHTML = buildRankTable(students);
+    })
+    .catch(() => {
+      // Fallback: read from already-rendered approved cards on shortlist page
+      const cards = [...document.querySelectorAll(`.approved-card[data-job="${jobId}"]`)];
+      if (!cards.length) {
+        container.innerHTML = `<p style="color:var(--muted);padding:32px;text-align:center;font-size:13px">No approved applicants found.</p>`;
+        return;
+      }
+      const students = cards.map(card => ({
+        name:        card.querySelector(".ac-name")?.textContent || "—",
+        course:      card.querySelector(".ac-meta")?.textContent?.split("·")[0]?.trim() || "—",
+        email:       card.querySelector(".ac-meta")?.textContent?.split("·")[1]?.trim() || "—",
+        score:       Math.floor(Math.random() * 30) + 70,  // fallback
+        skills:      [...card.querySelectorAll(".skill-tag")].map(t => t.textContent),
+        approved_on: card.querySelector(".ac-info-val")?.textContent || "—",
+        cv_url:      card.querySelector("a[href]")?.href || "",
+        app_id:      card.dataset.appId,
+      }));
+      students.sort((a, b) => b.score - a.score);
+      container.innerHTML = buildRankTable(students);
+    });
+}
+
+function buildRankTable(students) {
+  function initials(name) {
+    return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  }
+
+  students = [...students].sort((a, b) => {
+    const getTotal = s => {
+      const mcq     = s.mcq_score     != null ? parseFloat(s.mcq_score)     : null;
+      const machine = s.machine_score != null ? parseFloat(s.machine_score) : null;
+      const count   = [mcq, machine].filter(v => v !== null).length;
+      return count ? ((mcq || 0) + (machine || 0)) / count : -1;
+    };
+    return getTotal(b) - getTotal(a);
+  });
+
+  const mcqScores     = students.map(s => parseFloat(s.mcq_score)).filter(v => !isNaN(v));
+  const machineScores = students.map(s => parseFloat(s.machine_score)).filter(v => !isNaN(v));
+  const totals        = students.map(s => {
+    const mcq     = s.mcq_score     != null ? parseFloat(s.mcq_score)     : null;
+    const machine = s.machine_score != null ? parseFloat(s.machine_score) : null;
+    const count   = [mcq, machine].filter(v => v !== null).length;
+    return count ? ((mcq || 0) + (machine || 0)) / count : null;
+  }).filter(v => v !== null);
+
+  const avg = arr => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) + '%' : '—';
+  const top = arr => arr.length ? Math.max(...arr).toFixed(1) + '%' : '—';
+
+  const statsEl = document.getElementById('ranklist-stats');
+  if (statsEl) {
+    statsEl.style.display = 'flex';
+    document.getElementById('stat-total').textContent   = students.length;
+    document.getElementById('stat-mcq').textContent     = avg(mcqScores);
+    document.getElementById('stat-machine').textContent = avg(machineScores);
+    document.getElementById('stat-top').textContent     = top(totals);
+  }
+
+  const avatarColors = [
+    { bg:'#E6F1FB', color:'#185FA5' },
+    { bg:'#E1F5EE', color:'#0F6E56' },
+    { bg:'#EEEDFE', color:'#3C3489' },
+    { bg:'#FAEEDA', color:'#854F0B' },
+    { bg:'#FAECE7', color:'#993C1D' },
+  ];
+
+  return `
+  <div class="rl-table-wrap">
+    <div style="overflow-x:auto">
+      <table class="rl-table">
+        <thead>
+          <tr>
+            <th style="width:48px;text-align:center">#</th>
+            <th>Student</th>
+            <th>MCQ Score</th>
+            <th>Machine Test</th>
+            <th>Total %</th>
+            <th>Approved On</th>
+            <th>Interview</th>
+            <th>CV</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${students.map((s, i) => {
+            const mcq     = s.mcq_score     != null ? parseFloat(s.mcq_score)     : null;
+            const machine = s.machine_score != null ? parseFloat(s.machine_score) : null;
+            const count   = [mcq, machine].filter(v => v !== null).length;
+            const total   = count ? (((mcq || 0) + (machine || 0)) / count).toFixed(1) : null;
+            const av      = avatarColors[i % avatarColors.length];
+            const rankCls = i === 0 ? 'rl-rank-1' : i === 1 ? 'rl-rank-2' : i === 2 ? 'rl-rank-3' : '';
+            const isTop5  = i < 5 && total !== null;
+
+            return `
+            <tr class="rl-row ${isTop5 ? 'rl-row-top5' : ''}"
+                onclick="openCandidateModal(${JSON.stringify(s).replace(/"/g, '&quot;')})"
+                style="cursor:pointer; ${isTop5 ? 'background:linear-gradient(90deg,#f0fdf4 0%,#fff 100%);border-left:3px solid #16a34a;' : ''}">
+              <td style="text-align:center">
+                <span class="${rankCls}" style="font-size:14px">${i + 1}</span>
+                ${isTop5 ? `<div style="width:7px;height:7px;border-radius:50%;background:#16a34a;margin:3px auto 0"></div>` : ''}
+              </td>
+              <td>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div class="rl-avatar" style="background:${av.bg};color:${av.color}">${initials(s.name)}</div>
+                  <div>
+                    <div style="font-size:13px;font-weight:600">${s.name}</div>
+                    <div style="font-size:11px;color:var(--muted);margin-top:1px">${s.course}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                ${mcq !== null
+                  ? `<div style="display:flex;align-items:center;gap:8px">
+                       <div class="rl-bar-track"><div class="rl-bar-mcq" style="width:${mcq}%"></div></div>
+                       <span style="font-size:13px;font-weight:600">${mcq}%</span>
+                     </div>`
+                  : `<span style="font-size:12px;color:var(--muted)">Not taken</span>`}
+              </td>
+              <td>
+                ${machine !== null
+                  ? `<div style="display:flex;align-items:center;gap:8px">
+                       <div class="rl-bar-track"><div class="rl-bar-mac" style="width:${machine}%"></div></div>
+                       <span style="font-size:13px;font-weight:600">${machine}%</span>
+                     </div>`
+                  : `<span style="font-size:12px;color:var(--muted)">Not taken</span>`}
+              </td>
+              <td>
+                ${total !== null
+                  ? `<span style="font-size:15px;font-weight:700;color:${isTop5 ? '#16a34a' : 'inherit'}">${total}%</span>`
+                  : `<span style="font-size:12px;color:var(--muted)">—</span>`}
+              </td>
+              <td style="font-size:12px;color:var(--muted)">${s.approved_on || '—'}</td>
+              <td>
+                ${s.interview_result === 'passed'
+                  ? `<span style="font-size:12px;font-weight:600;color:#16a34a">✓ Passed</span>`
+                  : s.interview_result === 'rejected'
+                  ? `<span style="font-size:12px;font-weight:600;color:#c0392b">✗ Failed</span>`
+                  : `<span style="font-size:12px;color:var(--muted)">Pending</span>`}
+              </td>
+              <td>
+                ${s.cv_url
+                  ? `<a href="${s.cv_url}" target="_blank" onclick="event.stopPropagation()"
+                        style="display:inline-flex;align-items:center;gap:4px;padding:5px 11px;
+                               border-radius:6px;border:1px solid var(--border);font-size:11px;
+                               color:var(--black);text-decoration:none;background:var(--white)">
+                       View CV
+                     </a>`
+                  : `<span style="font-size:11px;color:var(--muted)">—</span>`}
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function exportRanklist() {
+  const jobId = document.getElementById("ranklist-job-select")?.value;
+  if (!jobId || jobId === "all") { showToast("Select a job first."); return; }
+  const rows = [...document.querySelectorAll("#ranklist-container table tbody tr")];
+  if (!rows.length) { showToast("No data to export."); return; }
+  let csv = "Rank,Name,Course,Score,Approved On\n";
+  rows.forEach((row, i) => {
+    const cells = [...row.querySelectorAll("td")];
+    const name  = row.querySelector(".app-student-name")?.textContent || "";
+    const meta  = row.querySelector(".app-student-meta")?.textContent?.split("·")[0]?.trim() || "";
+    const score = cells[2]?.textContent?.trim().replace(/\s+/g, " ").split(" ")[1] || "";
+    const date  = cells[4]?.textContent?.trim() || "";
+    csv += `${i + 1},"${name}","${meta}","${score}","${date}"\n`;
+  });
+  const a = document.createElement("a");
+  a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  a.download = "ranklist.csv";
+  a.click();
+}
+
+// ── Schedule mcq/machine test ───────────────────────────────────────────
+
+  function openProcessModal() {
+    if (!selectedJobId) {
+      alert("Select a job first");
+      return;
+    }
+
+    ["mcq", "machine"].forEach(stage => {
+      document.getElementById(stage + "_date").value = "";
+      setStageState(stage, "empty");
+    });
+
+    const select = document.querySelector(".job-filter");
+    const selectedText = select.options[select.selectedIndex].text;
+    document.getElementById("pm-job-tag").innerText = selectedText;
+    document.getElementById("pm-footer-status").innerText = "";
+    document.getElementById("processModal").style.display = "flex";
+    loadProcess(selectedJobId + "/?type=job");
+  }
+
+  function closeProcessModal() {
+    document.getElementById("processModal").style.display = "none";
+    document.getElementById("pm-footer-status").innerText = "";
+    const btn = document.getElementById("apply-all-btn");
+    if (btn) {
+      btn.innerText = "Apply All";
+      btn.style.background = "";
+      btn.disabled = false;
+    }
+  }
+
+  function loadProcess(appId) {
+    fetch("/get-process/" + appId)
+      .then(res => res.json())
+      .then(data => {
+        if (data.mcq_date) {
+          document.getElementById("mcq_date").value = data.mcq_date.replace(" ", "T").slice(0, 16);
+          setStageState("mcq", "saved");
+        }
+        if (data.machine_test_date) {
+          document.getElementById("machine_date").value = data.machine_test_date.replace(" ", "T").slice(0, 16);
+          setStageState("machine", "saved");
+        }
+      })
+      .catch(err => console.error("loadProcess failed:", err));
+  }
+
+  async function applyAll() {
+    const mcq     = document.getElementById("mcq_date").value;
+    const machine = document.getElementById("machine_date").value;
+
+    const toSave = [
+      { stage: "mcq",     date: mcq },
+      { stage: "machine", date: machine },
+    ].filter(s => s.date && stageState[s.stage] !== "saved");
+
+    if (toSave.length === 0) {
+      showFooterStatus("Nothing new to save.", "#888");
+      return;
+    }
+
+    const btn = document.getElementById("apply-all-btn");
+    const statusEl = document.getElementById("pm-footer-status");
+    btn.innerText = "Saving...";
+    btn.disabled = true;
+    statusEl.innerText = "";
+
+    try {
+      for (const s of toSave) {
+        const action = stageState[s.stage] === "dirty" ? "update" : "apply";
+        const res = await fetch("/save-process/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken")
+          },
+          body: JSON.stringify({
+            app_id: selectedAppId,
+            stage:  s.stage,
+            date:   s.date,
+            action: action
+          })
+        });
+        const data = await res.json();
+        if (data.status !== "success") {
+          alert("Error saving " + s.stage + ": " + (data.message || "Unknown error"));
+          btn.innerText = "Apply All";
+          btn.disabled = false;
+          return;
+        }
+        setStageState(s.stage, "saved");
+      }
+
+      btn.innerText = "Saved ✓";
+      btn.style.background = "#16a34a";
+      showFooterStatus("All stages saved!", "#16a34a");
+      setTimeout(() => {
+        btn.innerText = "Apply All";
+        btn.style.background = "";
+        btn.disabled = false;
+      }, 2000);
+
+    } catch (err) {
+      console.error("applyAll error:", err);
+      btn.innerText = "Apply All";
+      btn.disabled = false;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    ["mcq", "machine"].forEach(stage => {
+      const input = document.getElementById(stage + "_date");
+      if (!input) return;
+      input.addEventListener("change", function () {
+        if (!this.value) {
+          setStageState(stage, "empty");
+        } else if (stageState[stage] === "saved") {
+          setStageState(stage, "dirty");
+        } else if (stageState[stage] === "empty") {
+          setStageState(stage, "new");
+        }
+      });
+    });
+  });
+  
+
+  
+  function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+          document.cookie.split(';').forEach(cookie => {
+              cookie = cookie.trim();
+              if (cookie.startsWith(name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.split('=')[1]);
+              }
+          });
+      }
+      return cookieValue;
+  }
+  // ── Calendar ───────────────────────────────────────────
+  window.initCalendarIfNeeded = function() {
+      if (window._calendarInitialized) { loadCalendar(curYear, curMonth); return; }
+      window._calendarInitialized = true;
+      updateTodayLabel();
+      loadCalendar(curYear, curMonth);
+      setInterval(() => loadCalendar(curYear, curMonth), 60000);
+  };
+
+  async function loadCalendar(year, month) {
+      showCalLoading(true);
+      try {
+          const res  = await fetch(`/hr/api/calendar/?year=${year}&month=${month}`);
+          const data = await res.json();
+          renderCalendar(data);
+          renderTodayList(data.today_events);
+          renderStats(data.stats, data.events.length);
+      } catch (err) {
+          console.error('Calendar load failed:', err);
+          const el = document.getElementById('calLoading');
+          if (el) el.innerHTML = `<div style="color:#c0392b">Failed to load. <a href="#" onclick="loadCalendar(${year},${month})">Retry</a></div>`;
+          showCalLoading(true);
+      }
+  }
+
+  function renderCalendar(data) {
+      const { year, month, month_name, days_in_month, first_weekday, events } = data;
+      document.getElementById('cal-month-label').textContent = `${month_name} ${year}`;
+      const eventMap = {};
+      events.forEach(e => {
+      const d = new Date(e.date + 'T00:00:00').getDate();
+      if (!eventMap[d]) eventMap[d] = [];
+      // Only add if job_title not already present for this day
+      const alreadyExists = eventMap[d].some(existing => existing.job_title === e.job_title);
+      if (!alreadyExists) eventMap[d].push(e);
+  });
+      const offset = (first_weekday + 1) % 7;
+      let html = '';
+      const prevMonthDays = daysInMonth(month === 1 ? year - 1 : year, month === 1 ? 12 : month - 1);
+      for (let i = offset - 1; i >= 0; i--) {
+          html += `<div class="cal-day other-month"><div class="cal-day-num">${prevMonthDays - i}</div></div>`;
+      }
+      for (let d = 1; d <= days_in_month; d++) {
+          const isToday = (year === today.getFullYear() && month === today.getMonth() + 1 && d === today.getDate());
+          const dayEvents = eventMap[d] || [];
+          html += `<div class="cal-day ${isToday ? 'today' : ''}"><div class="cal-day-num">${d}</div>`;
+          dayEvents.slice(0, 2).forEach(e => {
+              const statusClass = e.status === 'active' ? 'interview' : 'pending';
+              const shortName = e.job_title || e.candidate;
+              html += `<div class="cal-event ${statusClass}" onclick="openDayDetail(${d}, ${JSON.stringify(dayEvents).replace(/"/g,'&quot;')})" style="cursor:pointer">${esc(shortName)}</div>`;
+          });
+          if (dayEvents.length > 2) {
+              html += `<div class="cal-event" style="background:transparent;color:#888;font-size:10px;cursor:pointer" onclick="openDayDetail(${d}, ${JSON.stringify(dayEvents).replace(/"/g,'&quot;')})">+${dayEvents.length - 2} more</div>`;
+          }
+          html += `</div>`;
+      }
+      const totalCells = offset + days_in_month;
+      const remaining  = (7 - (totalCells % 7)) % 7;
+      for (let d = 1; d <= remaining; d++) {
+          html += `<div class="cal-day other-month"><div class="cal-day-num">${d}</div></div>`;
+      }
+      document.getElementById('calDays').innerHTML = html;
+      showCalLoading(false);
+  }
+
+  function renderTodayList(events) {
+      const list = document.getElementById('todayList');
+      if (!list) return;
+      if (!events || events.length === 0) {
+          list.innerHTML = `<div style="text-align:center;padding:40px;color:#888;font-size:13px"><div style="font-size:28px;margin-bottom:8px">📭</div>No interviews scheduled for today.</div>`;
+          return;
+      }
+      list.innerHTML = events.map(e => {
+          const canJoin = e.status !== 'ended';
+          return `
+          <div class="interview-row">
+              <div><div class="interview-time">${esc(e.time)}</div></div>
+              <div class="interview-divider"></div>
+              <div class="interview-details">
+                  <div class="interview-name">${esc(e.candidate || 'Candidate')}</div>
+                  <div class="interview-meta">${esc(e.job_title)} · ${esc(e.company)} · HR Round</div>
+              </div>
+              <span class="interview-type type-hr">HR</span>
+              ${getStatusPill(e.status)}
+              <div class="action-pair" style="margin-left:8px">
+                  ${canJoin
+                      ? `<a href="${esc(e.room_url)}" class="btn btn-dark" style="height:30px;padding:0 12px;font-size:11px;text-decoration:none">Join</a>`
+                      : `<span class="btn btn-outline" style="height:30px;padding:0 12px;font-size:11px;opacity:.5">Ended</span>`}
+              </div>
+          </div>`;
+      }).join('');
+  }
+
+  function renderStats(stats, monthCount) {
+      const setEl = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+      setEl('stat-today', stats.today ?? 0);
+      setEl('stat-week',  stats.week  ?? 0);
+  }
+
+  window.changeMonth = function(dir) {
+      if (dir === 0) { curYear = today.getFullYear(); curMonth = today.getMonth() + 1; }
+      else {
+          curMonth += dir;
+          if (curMonth > 12) { curMonth = 1; curYear++; }
+          if (curMonth < 1)  { curMonth = 12; curYear--; }
+      }
+      loadCalendar(curYear, curMonth);
+  };
+
+  window.openDayDetail = function(day, events) {
+    const existing = document.getElementById('dayPopup');
+    if (existing) existing.remove();
+    const existingBd = document.getElementById('dayPopupBd');
+    if (existingBd) existingBd.remove();
+
+    // Group events by job_title
+    const jobMap = {};
+    events.forEach(e => {
+        if (!jobMap[e.job_title]) {
+            jobMap[e.job_title] = { ...e, candidates: [] };
+        }
+        jobMap[e.job_title].candidates.push(e.candidate);
+    });
+
+    const bd = document.createElement('div');
+    bd.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:9998';
+    const popup = document.createElement('div');
+    popup.id = 'dayPopup';
+    popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;padding:24px;min-width:320px;max-width:480px;z-index:9999;box-shadow:0 20px 60px rgba(0,0,0,.15);font-family:inherit;max-height:80vh;overflow-y:auto';
+
+    popup.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div style="font-weight:700;font-size:15px">Day ${day} — Interviews</div>
+            <button onclick="document.getElementById('dayPopup').remove();document.getElementById('dayPopupBd').remove()" 
+                    style="border:none;background:none;font-size:18px;cursor:pointer">×</button>
+        </div>
+        ${Object.values(jobMap).map(group => `
+            <div style="padding:14px;border:1px solid #eee;border-radius:8px;margin-bottom:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                    <div style="font-weight:700;font-size:14px">${esc(group.job_title)}</div>
+                    <div style="font-size:11px;color:#888">${esc(group.time)}</div>
+                </div>
+                <div style="font-size:12px;color:#666;margin-bottom:10px">${esc(group.company)}</div>
+                <div style="margin-bottom:10px">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#aaa;margin-bottom:6px">
+                        ${group.candidates.length} Candidate${group.candidates.length > 1 ? 's' : ''}
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:5px">
+                        ${group.candidates.map(c => `
+                            <span style="font-size:11px;font-weight:600;padding:3px 9px;background:#f5f5f5;border:1px solid #eee;color:#3d3d3d">
+                                ${esc(c)}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+                ${group.status !== 'ended'
+                    ? `<a href="${esc(group.room_url)}" style="display:inline-block;padding:6px 16px;background:#111;color:#fff;font-size:12px;font-weight:600;text-decoration:none">Join Room →</a>`
+                    : `<span style="font-size:11px;color:#888;font-weight:600">ENDED</span>`}
+            </div>`).join('')}`;
+
+    bd.id = 'dayPopupBd';
+    bd.onclick = () => { popup.remove(); bd.remove(); };
+    document.body.appendChild(bd);
+    document.body.appendChild(popup);
+};
+
+  function showCalLoading(show) {
+      const l = document.getElementById('calLoading');
+      const d = document.getElementById('calDays');
+      if (l) l.style.display = show ? 'block' : 'none';
+      if (d) d.style.visibility = show ? 'hidden' : 'visible';
+  }
+
+  function updateTodayLabel() {
+      const el = document.getElementById('today-date-label');
+      if (!el) return;
+      el.textContent = today.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  }
+
+  function daysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
+
+  function getStatusPill(status) {
+      const map = {
+          'active':      '<span class="s-pill s-approved" style="margin-left:8px">Active</span>',
+          'waiting':     '<span class="s-pill s-scheduled" style="margin-left:8px">Waiting</span>',
+          'not_started': '<span class="s-pill s-scheduled" style="margin-left:8px">Scheduled</span>',
+          'ended':       '<span class="s-pill" style="margin-left:8px;opacity:.5">Ended</span>',
+      };
+      return map[status] || '<span class="s-pill s-pending" style="margin-left:8px">Pending</span>';
+  }
+
+  function esc(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  if (!document.getElementById('calSpinnerStyle')) {
+      const s = document.createElement('style');
+      s.id = 'calSpinnerStyle';
+      s.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+      document.head.appendChild(s);
+  }
+  console.log(typeof openApplicantProcessModal);
+  console.log(selectedAppId);
+
+  document.querySelectorAll('button').forEach(b => { 
+    if (b.innerText.trim() === 'Schedule') 
+        console.log(b.getAttribute('onclick')); 
+  });
+
+
+    let _currentCandidate = null;
+
+    function openCandidateModal(s) {
+      _currentCandidate = s;
+
+      function initials(n) { return n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+
+      // Header
+      document.getElementById('cdAvatar').textContent  = initials(s.name);
+      document.getElementById('cdName').textContent    = s.name;
+      document.getElementById('cdEmail').textContent   = s.email || '';
+      document.getElementById('cdCourseBadge').textContent = s.course || '';
+
+      // Interview badge
+      const badge = document.getElementById('cdInterviewBadge');
+      if (s.interview_result === 'passed')
+        badge.innerHTML = `<span style="padding:3px 12px;background:#16a34a;border-radius:20px;font-size:11px;font-weight:700;color:#fff">✓ PASSED</span>`;
+      else if (s.interview_result === 'failed')
+        badge.innerHTML = `<span style="padding:3px 12px;background:#c0392b;border-radius:20px;font-size:11px;font-weight:700;color:#fff">✗ FAILED</span>`;
+      else
+        badge.innerHTML = `<span style="padding:3px 12px;background:#444;border-radius:20px;font-size:11px;font-weight:700;color:#aaa">PENDING</span>`;
+
+      // CV button
+      const cvBtn = document.getElementById('cdCvBtn');
+      if (s.cv_url) { cvBtn.href = s.cv_url; cvBtn.style.display = 'inline-block'; }
+      else { cvBtn.style.display = 'none'; }
+
+      // Student Details
+      document.getElementById('cdDetailEmail').textContent  = s.email          || '—';
+      document.getElementById('cdPhone').textContent        = s.phone          || '—';
+      document.getElementById('cdCourse').textContent       = s.course         || '—';
+      document.getElementById('cdApproved').textContent     = s.approved_on    || '—';
+      document.getElementById('cdInterviewDate').textContent = s.interview_date || '—';
+      document.getElementById('cdMatchScore').textContent   = s.match_score != null ? s.match_score + '%' : '—';
+
+      // Skills
+      const skillsEl = document.getElementById('cdSkills');
+      if (s.skills && s.skills.trim()) {
+        skillsEl.innerHTML = s.skills.split(',').map(sk => sk.trim()).filter(Boolean).map(sk =>
+          `<span style="padding:4px 12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:20px;font-size:11px;font-weight:600;color:#475569">${sk}</span>`
+        ).join('');
+      } else {
+        skillsEl.innerHTML = `<span style="font-size:12px;color:#aaa">No skills listed</span>`;
+      }
+
+      // Scores
+      const mcq     = s.mcq_score     != null ? parseFloat(s.mcq_score)     : null;
+      const machine = s.machine_score != null ? parseFloat(s.machine_score) : null;
+      const count   = [mcq, machine].filter(v => v !== null).length;
+      const total   = count ? (((mcq||0)+(machine||0))/count).toFixed(1) : null;
+
+      document.getElementById('cdMcq').textContent        = mcq     !== null ? mcq.toFixed(1)     + '%' : '—';
+      document.getElementById('cdMachine').textContent    = machine !== null ? machine.toFixed(1)  + '%' : '—';
+      document.getElementById('cdTotal').textContent      = total   !== null ? total               + '%' : '—';
+      document.getElementById('cdMcqDate').textContent    = s.mcq_date     || '';
+      document.getElementById('cdMachineDate').textContent = s.machine_date || '';
+
+      // HR Feedback
+      const feedbackSection = document.getElementById('cdFeedbackSection');
+      if (s.interview_feedback && s.interview_feedback.trim()) {
+        document.getElementById('cdFeedback').textContent = s.interview_feedback;
+        feedbackSection.style.display = 'block';
+      } else {
+        feedbackSection.style.display = 'none';
+      }
+
+      // AI Analysis
+      const analysisSection = document.getElementById('cdAnalysisSection');
+      const offerSection    = document.getElementById('cdOfferSection');
+      document.getElementById('offerLetterBox').style.display = 'none';
+
+      if (s.interview_result === 'passed' && s.interview_analysis) {
+        const a = typeof s.interview_analysis === 'string'
+          ? JSON.parse(s.interview_analysis) : s.interview_analysis;
+
+        document.getElementById('cdAiOverall').textContent = `${a.overall_score}/10`;
+        document.getElementById('cdAiComm').textContent    = `${a.communication_score}/10`;
+        document.getElementById('cdAiTech').textContent    = `${a.technical_score}/10`;
+        document.getElementById('cdAiConf').textContent    = `${a.confidence_score}/10`;
+        document.getElementById('cdAiSummary').textContent = a.summary;
+        document.getElementById('cdAiNotes').textContent   = a.hiring_notes;
+
+        document.getElementById('cdAiStrengths').innerHTML = a.strengths.map(t =>
+          `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12px;margin-bottom:5px"><span style="color:#16a34a;flex-shrink:0">✓</span>${t}</div>`
+        ).join('');
+        document.getElementById('cdAiWeaknesses').innerHTML = a.weaknesses.map(t =>
+          `<div style="display:flex;align-items:flex-start;gap:6px;font-size:12px;margin-bottom:5px"><span style="color:#c0392b;flex-shrink:0">✗</span>${t}</div>`
+        ).join('');
+
+       
+
+        analysisSection.style.display = 'block';
+        offerSection.style.display    = 'block';
+        buildOfferLetter(s, total);
+      } else {
+        analysisSection.style.display = 'none';
+        offerSection.style.display    = 'none';
+      }
+
+      document.getElementById('cdModalBg').classList.add('open');
+    }
+
+    function closeCandidateModal(e) {
+      if (e.target === document.getElementById('cdModalBg'))
+        document.getElementById('cdModalBg').classList.remove('open');
+    }
+
+    function toggleOfferLetter() {
+      const box = document.getElementById('offerLetterBox');
+      box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function buildOfferLetter(s, total) {
+      const today    = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+      const jobLabel = document.getElementById('ranklist-job-label')?.textContent || 'the applied position';
+      document.getElementById('olDate').textContent = today;
+      document.getElementById('olBody').innerHTML = `
+        <p>Dear <strong>${s.name}</strong>,</p>
+        <p>We are pleased to inform you that after a thorough evaluation of your performance
+        in our recruitment process — including the MCQ assessment, machine test, and personal
+        interview — you have been selected for the position of <strong>${jobLabel}</strong>.</p>
+        <p>Your overall assessment score of <strong>${total || '—'}%</strong> and your
+        interview performance reflect the qualities and skills we value in our team.</p>
+        <p>Please confirm your acceptance of this offer within <strong>7 working days</strong>
+        from the date of this letter.</p>
+        <p>We look forward to welcoming you aboard.</p>
+        <br><p>Warm regards,</p>
+      `;
+    }
+
+    function printOfferLetter() {
+      const content = document.getElementById('offerLetterBox').innerHTML;
+      const win = window.open('', '_blank');
+      win.document.write(`
+        <html><head><title>Offer Letter — ${_currentCandidate?.name || ''}</title>
+        <style>body{font-family:Georgia,serif;padding:60px;font-size:14px;line-height:1.9;max-width:700px;margin:auto}button{display:none}</style>
+        </head><body>${content}</body></html>
+      `);
+      win.document.close();
+      win.print();
+    }
+
+
+    function openScheduleModal() {
+      const rankSelect      = document.getElementById('ranklist-job-select');
+      const shortlistSelect = document.querySelector('#page-shortlist .job-filter');
+      const select          = (rankSelect && rankSelect.value !== 'all') ? rankSelect : shortlistSelect;
+      const label           = select ? select.options[select.selectedIndex].text : '—';
+
+      document.getElementById('schedule-job-tag').textContent = label;
+      document.getElementById('sch-datetime').value    = '';
+      document.getElementById('sch-error').textContent = '';
+
+      // ── Clear old preview ──
+      const oldPreview = document.getElementById('slot-preview-wrap');
+      if (oldPreview) oldPreview.remove();
+
+      const btn       = document.getElementById('sch-confirm-btn');
+      const removeBtn = document.getElementById('sch-remove-btn');
+
+      btn.textContent         = 'Apply';
+      btn.style.background    = '';
+      btn.disabled            = false;
+      btn.style.display       = 'inline-block';
+      removeBtn.style.display = 'none'; 
+
+      document.getElementById('schedule-overlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      if (!selectedJobId) return;
+
+      // ── Helper: build preview once we have both date + students ──
+      function buildAndShowPreview(existingDatetime, students) {
+        const sorted = [...students].sort((a, b) => {
+          const getTotal = s => {
+            const mcq     = s.mcq_score     != null ? parseFloat(s.mcq_score)     : null;
+            const machine = s.machine_score != null ? parseFloat(s.machine_score) : null;
+            const count   = [mcq, machine].filter(v => v !== null).length;
+            return count ? ((mcq || 0) + (machine || 0)) / count : -1;
+          };
+          return getTotal(b) - getTotal(a);
+        });
+        const top5  = sorted.slice(0, 5);
+        const slots = buildInterviewSlots(existingDatetime, top5);
+        showSlotPreview(slots);
+      }
+
+      // ── Fetch existing schedule date ──
+      fetch(`/get-process/${selectedJobId}/?type=job`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.hr_interview_date) {
+            // No schedule yet — just show empty modal
+            btn.style.display       = 'inline-block';
+            btn.textContent         = 'Apply';
+            removeBtn.style.display = 'none';
+            document.getElementById('sch-datetime').dataset.original = '';
+            return;
+          }
+
+          const existingDatetime = data.hr_interview_date.replace(' ', 'T').slice(0, 16);
+          document.getElementById('sch-datetime').value              = existingDatetime;
+          document.getElementById('sch-datetime').dataset.original   = existingDatetime;
+          btn.style.display       = 'none';
+          removeBtn.style.display = 'inline-block';
+
+          // ── Use cache if available, otherwise fetch ranklist ──
+          if (cachedRankStudents.length) {
+            buildAndShowPreview(existingDatetime, cachedRankStudents);
+          } else {
+            fetch(`/get_ranklist/?job_id=${selectedJobId}`)
+              .then(r => r.json())
+              .then(rankData => {
+                cachedRankStudents = rankData.students || [];  // ← update cache
+                if (cachedRankStudents.length) {
+                  buildAndShowPreview(existingDatetime, cachedRankStudents);
+                }
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+
+    function closeScheduleModal() {
+      document.getElementById('schedule-overlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Watch date change → switch btn label
+    document.addEventListener('DOMContentLoaded', function () {
+      const dtInput = document.getElementById('sch-datetime');
+      if (!dtInput) return;
+
+      dtInput.addEventListener('change', function () {
+        const btn       = document.getElementById('sch-confirm-btn');
+        const removeBtn = document.getElementById('sch-remove-btn');
+        const original  = this.dataset.original || '';
+
+        if (!this.value) {
+          // cleared
+          btn.textContent      = 'Apply';
+          btn.style.display    = original ? 'none' : 'inline-block';
+          removeBtn.style.display = original ? 'inline-block' : 'none';
+        } else if (original && this.value !== original) {
+          // date changed from existing → Update
+          btn.textContent      = 'Update';
+          btn.style.display    = 'inline-block';
+          btn.style.background = '';
+          removeBtn.style.display = 'none';
+        } else if (!original && this.value) {
+          // new date selected → Apply
+          btn.textContent      = 'Apply';
+          btn.style.display    = 'inline-block';
+          removeBtn.style.display = 'none';
+        } else {
+          // back to original
+          btn.style.display       = 'none';
+          removeBtn.style.display = 'inline-block';
+        }
+      });
+    });
+
+    function submitSchedule() {
+      const datetime  = document.getElementById('sch-datetime').value;
+      const errorEl   = document.getElementById('sch-error');
+      const btn       = document.getElementById('sch-confirm-btn');
+      const removeBtn = document.getElementById('sch-remove-btn');
+      const original  = document.getElementById('sch-datetime').dataset.original || '';
+
+      if (!datetime) {
+        errorEl.textContent = 'Please select a date and time.';
+        return;
+      }
+
+      const isUpdate  = btn.textContent === 'Update';
+      btn.textContent = 'Saving...';
+      btn.disabled    = true;
+      errorEl.textContent = '';
+
+      // ── Step 1: fetch ranklist to get top 5 sorted students ──
+      fetch(`/get_ranklist/?job_id=${selectedJobId}`)
+        .then(r => r.json())
+        .then(data => {
+          const allStudents = data.students || [];
+
+          // ── Step 2: sort by total % descending ──
+          const sorted = [...allStudents].sort((a, b) => {
+            const getTotal = s => {
+              const mcq     = s.mcq_score     != null ? parseFloat(s.mcq_score)     : null;
+              const machine = s.machine_score != null ? parseFloat(s.machine_score) : null;
+              const count   = [mcq, machine].filter(v => v !== null).length;
+              return count ? ((mcq || 0) + (machine || 0)) / count : -1;
+            };
+            return getTotal(b) - getTotal(a);
+          });
+
+          // ── Step 3: take top 5 only ──
+          const top5 = sorted.slice(0, 5);
+
+          console.log("TOP 5 SORTED:", top5.map(s => ({
+            name:    s.name,
+            app_id:  s.app_id,
+            total:   ((parseFloat(s.mcq_score||0) + parseFloat(s.machine_score||0)) / 2).toFixed(1)
+          })));
+
+          if (!top5.length) {
+            errorEl.textContent = 'No approved students found for this job.';
+            btn.textContent = isUpdate ? 'Update' : 'Apply';
+            btn.disabled    = false;
+            return;
+          }
+
+          // ── Step 4: build slots with fixed office times ──
+          const slots = buildInterviewSlots(datetime, top5);
+
+          console.log("SLOTS BEING SENT:", JSON.stringify(slots, null, 2));
+
+          // ── Step 5: send to backend ──
+          fetch('/save-process/', {
+            method:  'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken':  getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+              job_id: selectedJobId,
+              stage:  'hr',
+              date:   datetime,
+              action: isUpdate ? 'update' : 'apply',
+              slots:  slots
+            })
+          })
+          .then(r => r.json())
+          .then(result => {
+            if (result.status === 'success') {
+              document.getElementById('sch-datetime').dataset.original = datetime;
+              btn.style.display       = 'none';
+              btn.disabled            = false;
+              removeBtn.style.display = 'inline-block';
+              errorEl.textContent     = '';
+              showSlotPreview(slots);
+              showToast(isUpdate ? 'Interviews rescheduled!' : 'Interviews scheduled for Top 5!');
+            } else {
+              errorEl.textContent = result.message || 'Something went wrong.';
+              btn.textContent     = isUpdate ? 'Update' : 'Apply';
+              btn.disabled        = false;
+            }
+          })
+          .catch(() => {
+            errorEl.textContent = 'Save failed. Please try again.';
+            btn.textContent     = isUpdate ? 'Update' : 'Apply';
+            btn.disabled        = false;
+          });
+        })
+        .catch(() => {
+          errorEl.textContent = 'Could not fetch student list.';
+          btn.textContent     = isUpdate ? 'Update' : 'Apply';
+          btn.disabled        = false;
+        });
+    }
+
+    function removeSchedule() {
+      const errorEl   = document.getElementById('sch-error');
+      const removeBtn = document.getElementById('sch-remove-btn');
+      const btn       = document.getElementById('sch-confirm-btn');
+
+      if (!confirm('Remove the scheduled interview date?')) return;
+
+      removeBtn.textContent = 'Removing...';
+      removeBtn.disabled    = true;
+
+      fetch('/save-process/', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({
+          job_id: selectedJobId,
+          stage:  'hr',
+          date:   null,
+          action: 'remove'
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          document.getElementById('sch-datetime').value           = '';
+          document.getElementById('sch-datetime').dataset.original = '';
+          btn.textContent         = 'Apply';
+          btn.style.display       = 'none';
+          removeBtn.style.display = 'none';
+          removeBtn.textContent   = 'Remove';
+          removeBtn.disabled      = false;
+          errorEl.textContent     = '';
+          showToast('Interview schedule removed.');
+        } else {
+          errorEl.textContent   = data.message || 'Could not remove.';
+          removeBtn.textContent = 'Remove';
+          removeBtn.disabled    = false;
+        }
+      })
+      .catch(() => {
+        errorEl.textContent   = 'Server error.';
+        removeBtn.textContent = 'Remove';
+        removeBtn.disabled    = false;
+      });
+    }
+
+    // ── Build interview time slots for top 5 ──────────────────────────────
+    function buildInterviewSlots(datetimeStr, top5students) {
+      const slotStartMinutes = [
+        9  * 60,   // 09:00  → rank 1
+        10 * 60,   // 10:00  → rank 2  (15 min break after rank 1)
+        11 * 60,   // 11:00  → rank 3  (15 min break after rank 2)
+        12 * 60,   // 12:00  → rank 4  (15 min break after rank 3)
+        14 * 60,   // 14:00  → rank 5  (1 hr lunch break after rank 4)
+      ];
+
+      // Only use the DATE part — ignore whatever time HR picked
+      const baseDate = datetimeStr.split('T')[0];  // "2026-03-26"
+
+      return top5students.map((student, index) => {
+        const startMin     = slotStartMinutes[index];
+        const endMin       = startMin + 45;
+        const startStr     = minsToTime(startMin);   // "09:00"
+        const endStr       = minsToTime(endMin);     // "09:45"
+        const slotDatetime = `${baseDate}T${startStr}`;  // "2026-03-26T09:00"
+
+        console.log(`Slot ${index+1}: app_id=${student.app_id}, time=${slotDatetime}`);
+
+        return {
+          rank:     index + 1,
+          app_id:   student.app_id,
+          name:     student.name,
+          start:    startStr,
+          end:      endStr,
+          datetime: slotDatetime,
+        };
+      });
+    }
+
+  function minsToTime(totalMins) {
+    const h = Math.floor(totalMins / 60).toString().padStart(2, '0');
+    const m = (totalMins % 60).toString().padStart(2, '0');
+    return `${h}:${m}`;
+  }
+
+  function showSlotPreview(slots) {
+    const existing = document.getElementById('slot-preview-wrap');
+    if (existing) existing.remove();
+
+    const wrap = document.createElement('div');
+    wrap.id = 'slot-preview-wrap';
+    wrap.style.cssText = `
+      margin: 14px 0 0;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      overflow: hidden;
+      font-family: 'DM Sans', sans-serif;
+    `;
+
+    const breakNote = i => {
+      if (i === 3) return `<span style="font-size:10px;color:#f59e0b;font-weight:600;margin-left:6px">🍽 1hr lunch after</span>`;
+      if (i < 4)  return `<span style="font-size:10px;color:#888;margin-left:6px">☕ 15min break after</span>`;
+      return '';
+    };
+
+    wrap.innerHTML = `
+      <div style="background:#f0fdf4; padding:10px 16px; border-bottom:1px solid #dcfce7;
+                  font-size:11px; font-weight:700; text-transform:uppercase;
+                  letter-spacing:.07em; color:#16a34a; display:flex; align-items:center; gap:6px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block"></span>
+        Top ${slots.length} Interview Slots Assigned
+      </div>
+      ${slots.map((slot, i) => `
+        <div style="display:flex; align-items:center; gap:12px; padding:11px 16px;
+                    border-bottom:1px solid #f0f0f0; background:#fff;
+                    ${i < 5 ? 'border-left:3px solid #16a34a;' : ''}">
+          <div style="width:24px; height:24px; border-radius:50%; background:#16a34a;
+                      color:#fff; font-size:10px; font-weight:800;
+                      display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            ${slot.rank}
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:12px; font-weight:700; color:#0a0a0a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              ${slot.name || 'Rank ' + slot.rank}
+            </div>
+            <div style="font-size:11px; color:#6b6b6b; margin-top:1px; display:flex; align-items:center; flex-wrap:wrap;">
+              ${formatSlotTime(slot.start)} → ${formatSlotTime(slot.end)}
+              ${breakNote(i)}
+            </div>
+          </div>
+          <div style="font-size:12px; font-weight:800; color:#16a34a; white-space:nowrap;">
+            ${formatSlotTime(slot.start)}
+          </div>
+        </div>
+      `).join('')}
+    `;
+
+    const modalBody = document.querySelector('#schedule-overlay .pm-body');
+    if (modalBody) modalBody.appendChild(wrap);
+  }
+  
+  function formatSlotTime(timeStr) {
+    // "09:00" → "9:00 AM", "14:00" → "2:00 PM"
+    const [h, m] = timeStr.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
+  }
