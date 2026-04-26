@@ -13,7 +13,20 @@ urlpatterns = [
     path('logout/',views.logout,name="logout"),
     path('login_user/',views.login_user,name="login_user"),
     path('change_password/', views.change_password, name="change_password"),
-    path('forgot_password/', views.forgot_password, name="forgot_password"),
+
+    path('add-hr/', views.add_hr, name='add_hr'),
+    path('get-hr/<int:id>/', views.get_hr, name='get_hr'),
+    
+    path('admin/edit-user/<int:id>/', views.edit_user, name='edit_user'),
+    path('admin/get-user/<int:id>/', views.get_user, name='get_user'),
+    path('admin/delete-user/<int:id>/', views.delete_user, name='delete_user'),
+    
+    
+    path('forgot_password/',                views.forgot_password,  name='forgot_password'),
+    path('forgot_password/send-otp/',       views.send_otp,         name='forgot_send_otp'),
+    path('forgot_password/verify-otp/',     views.verify_otp,       name='forgot_verify_otp'),
+    path('forgot_password/reset-password/', views.reset_password,   name='forgot_reset_password'),
+    
     path("update_profile/", views.update_profile, name="update_profile"),
     path("admin_dashboard/", views.admin_dashboard, name="admin_dashboard"),
     path("add_company/", views.add_company, name="add_company"),
@@ -38,6 +51,7 @@ urlpatterns = [
     
     path('hr/api/calendar/', views.api_calendar_interviews, name='api_calendar_interviews'),
     path('get_ranklist/', views.get_ranklist, name='get_ranklist'),
+     path('google-login-callback/', views.google_login_callback, name='google_login_callback'),
     
     # path('assessment/hr/<int:job_id>/',
     #      # Simple redirect / info page for the HR interview

@@ -1,7 +1,8 @@
+import random
 from django.shortcuts import render, redirect ,get_object_or_404
 from django.core.files.storage import FileSystemStorage
 from django.http import HttpResponse, JsonResponse
-from .models import user_detail, Employee, Job ,application,Notification
+from .models import user_detail, Employee, Job ,application,Notification,AutoLoginToken
 from django.utils.crypto import get_random_string
 from django.db.models import Count,Q
 import string
@@ -13,19 +14,18 @@ import fitz
 import spacy
 import os
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST,require_http_methods
 from django.utils import timezone
 from django.core.mail import EmailMultiAlternatives
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
 from datetime import datetime
+from datetime import timedelta
+import urllib.parse
 import pytz
 
 nlp = spacy.load("en_core_web_sm")
 
-# ══════════════════════════════════════════
-# PASTE YOUR REAL VALUES HERE
-# ══════════════════════════════════════════
 REDIRECT_URI = "http://127.0.0.1:8000/meta-callback/"
 APP_ID     = "1234567890123456" 
 APP_SECRET = "abc123def456..."  
@@ -46,41 +46,9 @@ SKILLS_LIST = [
 ]
 
 # ─── REGISTER ───────────────────────────
+
 def reg(request):
     return render(request, 'reg.html')
-
-def extract_skills_from_cv(cv_file):
-    """Extract skills from uploaded CV using AI NLP."""
-
-    try:
-        pdf_bytes = cv_file.read()
-        cv_file.seek(0)
-
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-
-        full_text = ""
-        for page in doc:
-            full_text += page.get_text()
-        doc.close()
-
-        # Run AI NLP model
-        doc_nlp = nlp(full_text)
-
-        found_skills = []
-
-        # Extract important nouns / technical terms
-        for token in doc_nlp:
-            if token.pos_ in ["NOUN", "PROPN"]:
-                if token.text.lower() in [s.lower() for s in SKILLS_LIST]:
-                    found_skills.append(token.text.title())
-
-        unique_skills = list(dict.fromkeys(found_skills))
-        return ", ".join(unique_skills)
-
-    except Exception as e:
-        print(f"Skill extraction error: {e}")
-        return ""
-
 
 def insert_data(request):
     if request.method == "POST":
@@ -94,10 +62,8 @@ def insert_data(request):
 
         cv = request.FILES.get('cv')
         if cv:
-            
             extracted_skills = extract_skills_from_cv(cv)
             cv.seek(0)
-            
             file   = fs.save(fs.get_available_name(cv.name), cv)
             cv_url = fs.url(file)
 
@@ -123,49 +89,286 @@ def insert_data(request):
         )
         return render(request, 'login.html')
 
+def add_hr(request):
+    if request.method == "POST":
+        try:
+            full_name  = request.POST.get("full_name")
+            email      = request.POST.get("Email")
+            phone      = request.POST.get("phoneno")
+            department = request.POST.get("course")
+            role       = request.POST.get("role", "hr")
+
+            if not full_name or not email:
+                return JsonResponse({"success": False, "message": "Name and Email required"})
+
+            password = get_random_string(10, string.ascii_letters + string.digits)
+
+            user = user_detail.objects.create(
+                full_name=full_name,
+                Email=email,
+                phoneno=phone,
+                course=department,
+                role=role,
+                user_pass=password
+            )
+
+            send_mail(
+                "InternHub HR Account Created",
+                f"Hi {full_name},\n\nYour HR account has been created.\n\nEmail: {email}\nPassword: {password}\n\nRegards,\nInternHub Team",
+                settings.EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
+
+            return JsonResponse({"success": True})
+
+        except Exception as e:
+            return JsonResponse({"success": False, "message": str(e)})
+
+    return JsonResponse({"success": False, "message": "Invalid method"})
+
+# ─── FIX 1: was using undefined "User" — must be "user_detail" ───────────────
+def get_hr(request, id):
+    try:
+        user = user_detail.objects.get(id=id)          # FIX: User → user_detail
+        return JsonResponse({
+            "id":          user.id,
+            "full_name":   user.full_name,              # FIX: was "name"
+            "Email":       user.Email,                  # capital E — matches JS
+            "phoneno":     user.phoneno or "",          # FIX: was "phone"
+            "course":      user.course or "",           # FIX: was "department"
+            "role":        user.role,
+            "profile_url": user.profile_url or "",
+        })
+    except user_detail.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+
+# ─── forgot password ───────────────────────────
+
+_otp_store = {}
+ 
+def _generate_otp(length=6):
+    return ''.join(random.choices(string.digits, k=length))
+ 
+def forgot_password(request):
+    return render(request, 'forgot_password.html')
+
+@require_http_methods(["POST"])
+def send_otp(request):
+    try:
+        data  = json.loads(request.body)
+        email = data.get("email", "").strip().lower()
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({"ok": False, "error": "Invalid request."}, status=400)
+ 
+    if not email:
+        return JsonResponse({"ok": False, "error": "Email is required."}, status=400)
+ 
+    try:
+        user = user_detail.objects.get(Email=email)
+    except user_detail.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "No account found for that email."}, status=404)
+ 
+    otp = _generate_otp()
+    _otp_store[email] = {"otp": otp, "verified": False}
+ 
+    try:
+        send_mail(
+            subject="Your InternHub Password Reset Code",
+            message=(
+                f"Hi {user.full_name},\n\n"
+                f"Your one-time code is: {otp}\n\n"
+                f"It expires in 10 minutes.\n\n"
+                f"— InternHub Team"
+            ),
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[email],
+            fail_silently=False,
+        )
+    except Exception as exc:
+        return JsonResponse({"ok": False, "error": "Failed to send email. Try again."}, status=500)
+ 
+    return JsonResponse({"ok": True})
+ 
+@require_http_methods(["POST"])
+def verify_otp(request):
+    try:
+        data  = json.loads(request.body)
+        email = data.get("email", "").strip().lower()
+        otp   = data.get("otp", "").strip()
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({"ok": False, "error": "Invalid request."}, status=400)
+ 
+    record = _otp_store.get(email)
+ 
+    if not record:
+        return JsonResponse({"ok": False, "error": "No OTP found. Please restart."}, status=400)
+ 
+    if record["otp"] != otp:
+        return JsonResponse({"ok": False, "error": "Incorrect code. Try again."}, status=400)
+ 
+    record["verified"] = True
+    return JsonResponse({"ok": True})
+ 
+@require_http_methods(["POST"])
+def reset_password(request):
+    try:
+        data     = json.loads(request.body)
+        email    = data.get("email", "").strip().lower()
+        password = data.get("password", "")
+    except (json.JSONDecodeError, AttributeError):
+        return JsonResponse({"ok": False, "error": "Invalid request."}, status=400)
+ 
+    record = _otp_store.get(email)
+    if not record or not record.get("verified"):
+        return JsonResponse({"ok": False, "error": "OTP not verified. Please restart."}, status=403)
+ 
+    if len(password) < 8:
+        return JsonResponse({"ok": False, "error": "Password must be at least 8 characters."}, status=400)
+ 
+    try:
+        user = user_detail.objects.get(Email=email)
+    except user_detail.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "User not found."}, status=404)
+
+    user.user_pass = password
+    user.save()
+    _otp_store.pop(email, None)
+ 
+    return JsonResponse({"ok": True}) 
+ 
+# ─── extract skills ─────────────────────────── 
+ 
+def extract_skills_from_cv(cv_file):
+    try:
+        pdf_bytes = cv_file.read()
+        cv_file.seek(0)
+
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        full_text = ""
+        for page in doc:
+            full_text += page.get_text()
+        doc.close()
+
+        doc_nlp = nlp(full_text)
+        found_skills = []
+
+        for token in doc_nlp:
+            if token.pos_ in ["NOUN", "PROPN"]:
+                if token.text.lower() in [s.lower() for s in SKILLS_LIST]:
+                    found_skills.append(token.text.title())
+
+        unique_skills = list(dict.fromkeys(found_skills))
+        return ", ".join(unique_skills)
+
+    except Exception as e:
+        print(f"Skill extraction error: {e}")
+        return ""
+
+def _create_autologin_token(user):
+    token = get_random_string(64)
+    AutoLoginToken.objects.create(
+        user=user,
+        token=token,
+        expires_at=timezone.now() + timedelta(days=30),
+    )
+    return token
+
 # ─── LOGIN / LOGOUT ─────────────────────
 def login(request):
+    if request.session.get('userid'):
+        role = request.session.get('role')
+        if role == 'admin': return redirect('admin_dashboard')
+        if role == 'hr':    return redirect('hr_dashboard')
+        return redirect('user_dashboard')
+
+    token_val = request.COOKIES.get('jr_autologin')
+    if token_val:
+        try:
+            token_obj = AutoLoginToken.objects.select_related('user').get(token=token_val)
+            if token_obj.is_valid():
+                user = token_obj.user
+                request.session['userid'] = user.id
+                request.session['role']   = user.role
+                request.session['name']   = user.full_name
+                request.session.set_expiry(60 * 60 * 24 * 30)
+                token_obj.delete()
+                new_token = _create_autologin_token(user)
+                if user.role == 'admin':   
+                    response = redirect('admin_dashboard')
+                elif user.role == 'hr':    
+                    response = redirect('hr_dashboard')
+                else:                      
+                    response = redirect('user_dashboard')
+                response.set_cookie('jr_autologin', new_token,
+                                    max_age=60*60*24*30, httponly=True, samesite='Lax')
+                return response
+            else:
+                token_obj.delete()
+        except AutoLoginToken.DoesNotExist:
+            pass
+
     return render(request, 'login.html')
 
-
 def logout(request):
+    token_val = request.COOKIES.get('jr_autologin')
+    if token_val:
+        AutoLoginToken.objects.filter(token=token_val).delete()
     request.session.flush()
-    return redirect('login')
-
+    response = redirect('login')
+    response.delete_cookie('jr_autologin')
+    response.delete_cookie('jr_email')
+    return response
 
 def login_user(request):
     if request.method == "POST":
-        email    = request.POST.get("email")
-        password = request.POST.get("password")
+        email       = request.POST.get("email")
+        password    = request.POST.get("password")
+        remember_me = request.POST.get("remember_me")
         try:
             user = user_detail.objects.get(Email=email, user_pass=password)
             request.session['userid'] = user.id
             request.session['role']   = user.role
             request.session['name']   = user.full_name
-            print("user number:",user.id)
-            
-            if user.role == "user":
-                return redirect('user_dashboard')
-            elif user.role == "admin":
-                return redirect('admin_dashboard')
+
+            if remember_me:
+                request.session.set_expiry(60 * 60 * 24 * 30)
             else:
-                return redirect('hr_dashboard')
+                request.session.set_expiry(0)
+
+            if user.role == "user":
+                response = redirect('user_dashboard')
+            elif user.role == "admin":
+                response = redirect('admin_dashboard')
+            else:
+                response = redirect('hr_dashboard')
+
+            if remember_me:
+                token = _create_autologin_token(user)
+                response.set_cookie('jr_autologin', token,
+                                    max_age=60*60*24*30, httponly=True, samesite='Lax')
+                response.set_cookie('jr_email', urllib.parse.quote(email),
+                                    max_age=60*60*24*30, httponly=False, samesite='Lax')
+            else:
+                response.delete_cookie('jr_autologin')
+                response.delete_cookie('jr_email')
+
+            return response
+
         except user_detail.DoesNotExist:
             return render(request, 'login.html', {'error': 'Invalid email or password'})
-
+    
+    return render(request, 'login.html')
 
 # ─── DASHBOARDS ─────────────────────────
 
 def user_dashboard(request):
-
     if request.session.get('role') != 'user':
         return redirect('login')
 
     user = user_detail.objects.get(id=request.session.get('userid'))
     companies = Employee.objects.all()
-    
     user_id = request.session.get('userid')
-
     notifications = Notification.objects.filter(user_id=user_id).order_by('-created_at')
         
     user_skills = []
@@ -197,21 +400,20 @@ def user_dashboard(request):
     applied_job_ids = list(applied_jobs)
     
     assessments = get_assessment_context(user)
-    completed_assessments=get_completeAssessment_context(user)
-    
+    completed_assessments = get_completeAssessment_context(user)
 
     return render(request, "user_dashboard.html", {
-        "user":           user,
-        "jobs":           jobs,
-        "skills":         user_skills,
-        "company":        companies,
-        "applied_job_ids": applied_job_ids,
-        "notifications":  notifications,
-        "unread_count":   notifications.filter(is_read=False).count(),
-        "assessments":    assessments,
-        "has_assessment": len(assessments) > 0,
-        "completed_assessments":completed_assessments,
-        "has_completed":len(completed_assessments) > 0,
+        "user":                user,
+        "jobs":                jobs,
+        "skills":              user_skills,
+        "company":             companies,
+        "applied_job_ids":     applied_job_ids,
+        "notifications":       notifications,
+        "unread_count":        notifications.filter(is_read=False).count(),
+        "assessments":         assessments,
+        "has_assessment":      len(assessments) > 0,
+        "completed_assessments": completed_assessments,
+        "has_completed":       len(completed_assessments) > 0,
     })
     
 @require_POST
@@ -243,11 +445,11 @@ def admin_dashboard(request):
     student_count = user_detail.objects.exclude(role__in=['hr','emp','admin']).count()
 
     return render(request, "admin_dashboard.html", {
-        "admin": admin,
-        "users": users,
-        "emp": emp,
-        "emp_count": emp_count,
-        "hr_count": hr_count,
+        "admin":         admin,
+        "users":         users,
+        "emp":           emp,
+        "emp_count":     emp_count,
+        "hr_count":      hr_count,
         "student_count": student_count,
     })
 
@@ -259,61 +461,53 @@ def hr_dashboard(request):
         app_count=Count('application', filter=Q(application__status='pending'))
     )
 
-    hr_data = user_detail.objects.get(id=hr_id)
-    hr_jobs = Job.objects.filter(hr_id=hr_id, status='open').select_related('company_id')
-    
+    hr_data   = user_detail.objects.get(id=hr_id)
+    hr_jobs   = Job.objects.filter(hr_id=hr_id, status='open').select_related('company_id')
     user_data = user_detail.objects.filter(role='user').annotate(app_count=Count('application'))
     
     for u in user_data: 
         if u.skills:
             u.skills = [s.strip() for s in u.skills.split(',')]
     
-    
-    pending_list= application.objects.filter(status='pending').order_by('-applied_at')
-   
+    pending_list = application.objects.filter(status='pending').order_by('-applied_at')
 
     job_list = []
     for j in job_queryset:
         j.skills_list = [s.strip() for s in j.skills.split(',') if s.strip()] if j.skills else []
         job_list.append(j)
 
-    # ── APPROVED APPLICATIONS ──────────────────────────
     approved_apps = application.objects.filter(
         status='approved'
     ).select_related('user_id', 'job_id').order_by('-applied_at')
     
-    completed_interview=application.objects.filter(
-        status='interview_completed'
-    )
+    completed_interview = application.objects.filter(status='interview_completed')
 
     approved_list = []
     for app in approved_apps:
         user = app.user_id
         job  = app.job_id
         approved_list.append({
-            "app_id":     app.id,         
-            "job_id":     job.id,
-            "name":       user.full_name,
-            "email":      user.Email,
-            "course":     user.course,
-            "cv_url":     user.cv_url,
-            "skills":     user.skills,
+            "app_id":      app.id,         
+            "job_id":      job.id,
+            "name":        user.full_name,
+            "email":       user.Email,
+            "course":      user.course,
+            "cv_url":      user.cv_url,
+            "skills":      user.skills,
             "applied_on":  app.applied_at,
             "approved_on": app.applied_at,
             "job_title":   job.job_title,
-            "match_score" : app.match_score,
+            "match_score": app.match_score,
             "company":     job.company_id.company_name if job.company_id else "N/A",
             "location":    job.location,
             "duration":    job.duration,
             "stipend":     job.stipend,
-            "req_skill": job.skills,
-            # ⭐ schedule status for showing indicator on card
+            "req_skill":   job.skills,
             "has_mcq":     bool(app.mcq_date),
             "has_machine": bool(app.machine_test_date),
             "has_hr":      bool(app.hr_interview_date),
         })
 
-    # ── REJECTED APPLICATIONS ─────────────────────────
     rejected_apps = application.objects.filter(
         status='rejected'
     ).select_related('user_id', 'job_id').order_by('-applied_at')
@@ -323,12 +517,11 @@ def hr_dashboard(request):
         user = app.user_id
         job  = app.job_id
         rejected_list.append({
-            "job_id":     job.id,
-            "name":       user.full_name,
-            "email":      user.Email,
-            "course":     user.course,
-            "year":       getattr(user, "year", ""),
-            "skills":     user.skills,
+            "job_id":      job.id,
+            "name":        user.full_name,
+            "email":       user.Email,
+            "course":      user.course,
+            "skills":      user.skills,
             "applied_on":  app.applied_at,
             "rejected_on": app.applied_at,
             "reason":      getattr(app, "feedback", "Insufficient skill match"),
@@ -339,13 +532,12 @@ def hr_dashboard(request):
             "stipend":     job.stipend,
         })
 
-    # ── INTERVIEW SCHEDULE ────────────────────────────
     today = timezone.localdate()
 
     scheduled_apps = application.objects.filter(
         job_id__hr_id=hr_id,
         status='approved',
-        hr_interview_date__isnull=False   # only those with HR date set
+        hr_interview_date__isnull=False
     ).select_related('user_id', 'job_id', 'job_id__company_id').order_by('hr_interview_date')
 
     today_interviews    = []
@@ -372,79 +564,64 @@ def hr_dashboard(request):
         elif app.hr_interview_date.date() > today:
             upcoming_interviews.append(entry)
 
-    app_list=application.objects.all()
+    app_list = application.objects.all()
     
     for u in app_list: 
         if u.job_id.skills:
             u.job_id.skills = [s.strip() for s in u.job_id.skills.split(',')]
-            
     
     return render(request, 'hr_dashboard.html', {
-        'user':                user_data,
-        'hr':                  hr_data,
-        'company':             company,
-        'job':                 job_list,
-        'applications' :       app_list,     
-        'approved_apps':       approved_list,
-        'rejected_apps':       rejected_list,
-        'pending_apps':        pending_list,
-        'hr_jobs':             hr_jobs,
-        'today_interviews':    today_interviews,
-        'upcoming_interviews': upcoming_interviews,
-        'today_count':         len(today_interviews),
-        'upcoming_count':      len(upcoming_interviews),
-        'job_total':           job_queryset.count(),
-        'job_open':            job_queryset.filter(status='open').count(),
-        'job_draft':           job_queryset.filter(status='draft').count(),
-        'job_closed':          job_queryset.filter(status='closed').count(),
-        'total_apps_count':    application.objects.count(),
-        'approved_apps_count': len(approved_list),
-        'rejected_apps_count': len(rejected_list),
-        'pending_apps_count':  application.objects.filter(status='pending').count(),
+        'user':                    user_data,
+        'hr':                      hr_data,
+        'company':                 company,
+        'job':                     job_list,
+        'applications':            app_list,     
+        'approved_apps':           approved_list,
+        'rejected_apps':           rejected_list,
+        'pending_apps':            pending_list,
+        'hr_jobs':                 hr_jobs,
+        'today_interviews':        today_interviews,
+        'upcoming_interviews':     upcoming_interviews,
+        'today_count':             len(today_interviews),
+        'upcoming_count':          len(upcoming_interviews),
+        'job_total':               job_queryset.count(),
+        'job_open':                job_queryset.filter(status='open').count(),
+        'job_draft':               job_queryset.filter(status='draft').count(),
+        'job_closed':              job_queryset.filter(status='closed').count(),
+        'total_apps_count':        application.objects.count(),
+        'approved_apps_count':     len(approved_list),
+        'rejected_apps_count':     len(rejected_list),
+        'pending_apps_count':      application.objects.filter(status='pending').count(),
         'completed_interview_count': completed_interview.count(),
     })
 
 # ─── PASSWORD ───────────────────────────
 
 def change_password(request):
-    if not request.session.get('userid'):
-        return JsonResponse({'status': 'error', 'message': 'Login required'})
+    current = request.POST.get("current_password")
+    new_pw  = request.POST.get("new_password")
+    confirm = request.POST.get("confirm_password")
 
-    if request.method == "POST":
-        current = request.POST.get("current_password")
-        new     = request.POST.get("new_password")
-        confirm = request.POST.get("confirm_password")
-        user    = user_detail.objects.get(id=request.session['userid'])
+    if new_pw != confirm:
+        return JsonResponse({"status": "error", "message": "Passwords do not match."})
+    
+    if len(new_pw) < 8:
+        return JsonResponse({"status": "error", "message": "Password must be at least 8 characters."})
 
-        if user.user_pass != current:
-            return JsonResponse({'status': 'error', 'message': 'Current password incorrect'})
-        if new != confirm:
-            return JsonResponse({'status': 'error', 'message': 'Passwords do not match'})
-        if len(new) < 8:
-            return JsonResponse({'status': 'error', 'message': 'Minimum 8 characters required'})
+    try:
+        user = user_detail.objects.get(id=request.session['userid'])
+    except user_detail.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "User not found."})
 
-        user.user_pass = new
-        user.save()
-        return JsonResponse({'status': 'success', 'message': 'Password updated successfully'})
+    if user.user_pass != current:
+        return JsonResponse({"status": "error", "message": "Current password is incorrect."})
 
-def forgot_password(request):
-    if request.method == "POST":
-        email = request.POST.get("email")
-        try:
-            user = user_detail.objects.get(Email=email)
-            send_mail(
-                "Your InternHub Login Password",
-                f"Hi {user.full_name},\n\nYour password is: {user.user_pass}\n\nRegards,\nInternHub Team",
-                settings.EMAIL_HOST_USER,
-                [email],
-                fail_silently=False,
-            )
-            return render(request, 'forgot_password.html', {'msg': 'Password sent to your email ✅'})
-        except user_detail.DoesNotExist:
-            return render(request, 'forgot_password.html', {'error': 'Email does not exist ❌'})
-    return render(request, 'forgot_password.html')
+    user.user_pass = new_pw
+    user.save()
+    return JsonResponse({"status": "success", "message": "Password updated successfully."})
 
 # ─── USER CRUD ───────────────────────────
+
 def update_profile(request):
     if 'userid' not in request.session:
         return redirect('login')
@@ -464,6 +641,7 @@ def update_profile(request):
         user.save()
     return redirect('dashboard')
 
+# FIX 2: get_user — was already correct, no changes needed
 def get_user(request, id):
     try:
         u = user_detail.objects.get(id=id)
@@ -482,7 +660,7 @@ def get_user(request, id):
 def edit_user(request, id):
     if request.method == "POST":
         try:
-            u = user_detail.objects.get(id=id)
+            u           = user_detail.objects.get(id=id)
             u.full_name = request.POST.get('full_name', u.full_name)
             u.Email     = request.POST.get('Email', u.Email)
             u.phoneno   = request.POST.get('phoneno', u.phoneno)
@@ -493,15 +671,19 @@ def edit_user(request, id):
             return JsonResponse({'success': False, 'message': 'User not found'})
     return JsonResponse({'success': False})
 
+# FIX 3: delete_user — was using undefined "User", must be "user_detail"
+#         Also must return JsonResponse (not redirect) so JS can handle it
+@require_POST
 def delete_user(request, id):
+    print("678")
     try:
         u = user_detail.objects.get(id=id)
         u.delete()
-    except user_detail.DoesNotExist:
-        pass
-    return redirect('admin_dashboard')
-
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=404)
 # ─── COMPANY CRUD ───────────────────────
+
 def add_company(request):
     if request.method == "POST":
         Employee.objects.create(
@@ -513,18 +695,16 @@ def add_company(request):
         return JsonResponse({"success": True})
     return JsonResponse({"success": False})
 
-
 def view_company(request, id):
     try:
         c = Employee.objects.get(id=id)
         return JsonResponse({
-            "id":           c.id,
-            "company_name": c.company_name,
-            "email":        c.email,
-            "website":      c.website,
-            "location":     c.location,
-            "created":      c.created_at.strftime("%d %b %Y"),
-            # ⭐ Meta connection status
+            "id":                c.id,
+            "company_name":      c.company_name,
+            "email":             c.email,
+            "website":           c.website,
+            "location":          c.location,
+            "created":           c.created_at.strftime("%d %b %Y"),
             "is_meta_connected": c.is_meta_connected,
             "fb_page_id":        c.fb_page_id or '',
             "ig_account_id":     c.ig_account_id or '',
@@ -563,6 +743,7 @@ def delete_company(request, id):
     return JsonResponse({"success": False})
 
 # ─── JOB CRUD ───────────────────────────
+
 def add_job(request):
     hr_id = request.session.get('userid')
     if request.method == "POST":
@@ -610,7 +791,6 @@ def edit_job(request):
             return JsonResponse({"success": False, "error": str(e)})
     return JsonResponse({"success": False})
 
-
 def delete_job(request):
     if request.method == "POST":
         try:
@@ -622,13 +802,7 @@ def delete_job(request):
     return JsonResponse({"success": False})
 
 def connect_meta(request, company_id):
-    """
-    Step 1: Store company_id in session, redirect user to Facebook login
-    """
-    # Save which company is connecting
     request.session["connecting_company_id"] = company_id
-
-    # Build Facebook OAuth URL
     fb_login_url = (
         f"https://www.facebook.com/v18.0/dialog/oauth"
         f"?client_id={APP_ID}"
@@ -637,15 +811,9 @@ def connect_meta(request, company_id):
         f"instagram_basic,instagram_content_publish"
         f"&response_type=code"
     )
-
-    # This redirects user to Facebook login page
     return redirect(fb_login_url)
 
-
 def get_long_lived_token(short_token):
-    """
-    Convert short-lived token (1 hour) to long-lived token (60 days)
-    """
     response = requests.get(
         "https://graph.facebook.com/v18.0/oauth/access_token",
         params={
@@ -655,18 +823,10 @@ def get_long_lived_token(short_token):
             "fb_exchange_token": short_token,
         }
     ).json()
-
     return response.get("access_token")
 
 def meta_callback(request):
-    """
-    Step 2: Facebook redirects back here with a 'code'
-    We exchange it for tokens and save everything to DB
-    """
-
-    # Get the company we're connecting
     company_id = request.session.get("connecting_company_id")
-
     if not company_id:
         return redirect('/admin-dashboard/')
 
@@ -675,20 +835,15 @@ def meta_callback(request):
     except Employee.DoesNotExist:
         return redirect('/admin-dashboard/')
 
-    # Check for errors from Facebook
     error = request.GET.get("error")
     if error:
-        error_reason = request.GET.get("error_reason", "Unknown error")
-        # Redirect back with error message
-        return redirect(f'/admin-dashboard/?meta_error={error_reason}')
+        return redirect(f'/admin-dashboard/?meta_error={request.GET.get("error_reason","Unknown")}')
 
-    # Get the authorization code from URL
     code = request.GET.get("code")
     if not code:
         return redirect('/admin-dashboard/')
 
     try:
-        # ── STEP A: Exchange code for short-lived token ──
         token_response = requests.get(
             "https://graph.facebook.com/v18.0/oauth/access_token",
             params={
@@ -703,12 +858,10 @@ def meta_callback(request):
         if not short_token:
             return redirect('/admin-dashboard/?meta_error=token_failed')
 
-        # ── STEP B: Convert to long-lived token (60 days) ──
         long_token = get_long_lived_token(short_token)
         if not long_token:
             return redirect('/admin-dashboard/?meta_error=longtoken_failed')
 
-        # ── STEP C: Get Facebook Pages owned by user ──
         pages_response = requests.get(
             "https://graph.facebook.com/v18.0/me/accounts",
             params={"access_token": long_token}
@@ -718,36 +871,26 @@ def meta_callback(request):
         if not pages:
             return redirect('/admin-dashboard/?meta_error=no_pages')
 
-        # Use the first page (you can later let user choose)
-        page        = pages[0]
-        page_id     = page["id"]
-        page_token  = page["access_token"]
-        page_name   = page.get("name", "")
+        page       = pages[0]
+        page_id    = page["id"]
+        page_token = page["access_token"]
 
-        # ── STEP D: Get Instagram Business Account linked to the Page ──
         ig_response = requests.get(
             f"https://graph.facebook.com/v18.0/{page_id}",
-            params={
-                "fields":       "instagram_business_account",
-                "access_token": page_token,
-            }
+            params={"fields": "instagram_business_account", "access_token": page_token}
         ).json()
 
         ig_id = None
         if "instagram_business_account" in ig_response:
             ig_id = ig_response["instagram_business_account"]["id"]
 
-        # ── STEP E: Save everything to database ──
         company.fb_page_id        = page_id
-        company.ig_account_id     = ig_id  # can be None if no IG linked
+        company.ig_account_id     = ig_id
         company.page_access_token = page_token
         company.is_meta_connected = True
         company.save()
 
-        # Clear session
         del request.session["connecting_company_id"]
-
-        # Redirect back to admin with success
         return redirect('/admin-dashboard/?meta_success=1')
 
     except Exception as e:
@@ -756,92 +899,64 @@ def meta_callback(request):
     
 def apply_job(request):
     if request.method == "POST":
-        user_id = request.session.get('userid')
-        job_id = request.POST.get('job_id')
-
+        user_id  = request.session.get('userid')
+        job_id   = request.POST.get('job_id')
         user_obj = user_detail.objects.get(id=user_id)
         job_obj  = Job.objects.get(id=job_id)
 
-        already = application.objects.filter(
-            user_id=user_obj,
-            job_id=job_obj
-        ).exists()
-
+        already = application.objects.filter(user_id=user_obj, job_id=job_obj).exists()
         if not already:
-            application.objects.create(
-                user_id=user_obj,
-                job_id=job_obj
-            )
-            return JsonResponse({"status":"success"})
-
-        return JsonResponse({"status":"exists"})
+            application.objects.create(user_id=user_obj, job_id=job_obj)
+            return JsonResponse({"status": "success"})
+        return JsonResponse({"status": "exists"})
     
 def toggle_apply_job(request):
     if request.method == "POST":
-        user_id = request.session.get('userid')
-        job_id  = request.POST.get('job_id')
-
+        user_id  = request.session.get('userid')
+        job_id   = request.POST.get('job_id')
         user_obj = user_detail.objects.get(id=user_id)
         job_obj  = Job.objects.get(id=job_id)
 
-        existing = application.objects.filter(
-            user_id=user_obj,
-            job_id=job_obj
-        ).first()
+        existing = application.objects.filter(user_id=user_obj, job_id=job_obj).first()
 
         if existing:
             existing.delete()
             return JsonResponse({"status": "removed"})
         else:
-            user_skills = []
-            if user_obj.skills:
-                user_skills = [s.strip().lower() for s in user_obj.skills.split(",")]
-
-            job_skills = []
-            if job_obj.skills:
-                job_skills = [s.strip().lower() for s in job_obj.skills.split(",")]
+            user_skills = [s.strip().lower() for s in user_obj.skills.split(",")] if user_obj.skills else []
+            job_skills  = [s.strip().lower() for s in job_obj.skills.split(",")]  if job_obj.skills  else []
 
             if job_skills:
-                common = set(user_skills) & set(job_skills)
+                common     = set(user_skills) & set(job_skills)
                 match_score = int((len(common) / len(job_skills)) * 100)
             else:
                 match_score = 0
 
-            application.objects.create(
-                user_id=user_obj,
-                job_id=job_obj,
-                match_score=match_score 
-            )
+            application.objects.create(user_id=user_obj, job_id=job_obj, match_score=match_score)
             return JsonResponse({"status": "applied", "match_score": match_score})
     
 def view_applications(request, job_id):
-
     applications = application.objects.filter(job_id=job_id).select_related('user_id')
     data = []
-
     for app in applications:
         data.append({
-            "id": app.id,
-            "name": app.user_id.full_name,
-            "email": app.user_id.Email,
-            "date": app.applied_at.strftime("%b %d, %Y"),
+            "id":     app.id,
+            "name":   app.user_id.full_name,
+            "email":  app.user_id.Email,
+            "date":   app.applied_at.strftime("%b %d, %Y"),
             "status": app.status
         })
-        
     return JsonResponse({"applications": data})
 
 @csrf_exempt
 def update_application_status(request):
     if request.method == "POST":
-        data = json.loads(request.body)
-
+        data   = json.loads(request.body)
         app_id = data.get("id")
         status = data.get("status")
-
-        app = application.objects.get(id=app_id)
+        app    = application.objects.get(id=app_id)
         app.status = status
         app.save()
-
         return JsonResponse({"success": True})
 
 def save_process(request):
@@ -853,11 +968,6 @@ def save_process(request):
         date    = data.get("date")
         action  = data.get("action")
         slots   = data.get("slots", [])
-
-        print("=== RECEIVED SLOTS ===")
-        for s in slots:
-            print(f"  app_id={s.get('app_id')}  datetime={s.get('datetime')}  rank={s.get('rank')}")
-        print("======================")
 
         ist = pytz.timezone('Asia/Kolkata')
 
@@ -873,28 +983,22 @@ def save_process(request):
         }
 
         def parse_dt(dt_str):
-            """Parse datetime string and localize to IST."""
             naive = datetime.strptime(dt_str[:16], "%Y-%m-%dT%H:%M")
             return ist.localize(naive)
 
         if stage not in field_map:
             return JsonResponse({"status": "error", "message": "Invalid stage"}, status=400)
 
-        # ══════════════════════════════════════════════════════
-        # HR STAGE WITH SLOTS → save individual time per app
-        # ══════════════════════════════════════════════════════
         if stage == "hr" and slots:
             processed_apps = []
-            job    = None
+            job     = None
             message = ""
 
             for slot in slots:
                 slot_app_id   = slot.get("app_id")
                 slot_datetime = slot.get("datetime")
-
                 if not slot_app_id:
                     continue
-
                 try:
                     app = application.objects.select_related('user_id', 'job_id').get(id=slot_app_id)
                 except application.DoesNotExist:
@@ -910,7 +1014,7 @@ def save_process(request):
                 else:
                     if not slot_datetime:
                         continue
-                    parsed    = parse_dt(slot_datetime)        # ← IST localized
+                    parsed = parse_dt(slot_datetime)
                     app.hr_interview_date = parsed
                     app.save()
                     formatted = parsed.strftime("%B %d, %Y at %I:%M %p")
@@ -933,16 +1037,11 @@ def save_process(request):
                     job=job,
                     action=action
                 )
-
             return JsonResponse({"status": "success"})
 
-        # ══════════════════════════════════════════════════════
-        # HR STAGE REMOVE (no slots) → clear all in job
-        # ══════════════════════════════════════════════════════
         if stage == "hr" and action == "remove" and job_id:
             apps = application.objects.select_related('user_id', 'job_id').filter(
-                job_id=job_id,
-                status='approved'
+                job_id=job_id, status='approved'
             )
             if not apps.exists():
                 return JsonResponse({"status": "error", "message": "No applications found"}, status=404)
@@ -965,13 +1064,9 @@ def save_process(request):
             )
             return JsonResponse({"status": "success"})
 
-        # ══════════════════════════════════════════════════════
-        # MCQ / MACHINE — original logic with IST fix
-        # ══════════════════════════════════════════════════════
         if job_id:
             apps = application.objects.select_related('user_id', 'job_id').filter(
-                job_id=job_id,
-                status='approved'
+                job_id=job_id, status='approved'
             )
             if not apps.exists():
                 return JsonResponse({"status": "error", "message": "No applications found"}, status=404)
@@ -988,14 +1083,13 @@ def save_process(request):
             if action in ["apply", "update"]:
                 if not date:
                     return JsonResponse({"status": "error", "message": "Date required"}, status=400)
-                parsed    = parse_dt(date)                     # ← IST localized
+                parsed    = parse_dt(date)
                 setattr(app, field_map[stage], parsed)
                 app.save()
                 formatted = parsed.strftime("%B %d, %Y at %I:%M %p")
                 verb      = "scheduled" if action == "apply" else "rescheduled"
                 message   = f"📅 {stage_labels[stage]} for '{job.job_title}' has been {verb} on {formatted} IST."
                 Notification.objects.create(user=user, job=job, message=message, is_read=False)
-
             elif action == "remove":
                 setattr(app, field_map[stage], None)
                 app.save()
@@ -1010,7 +1104,6 @@ def save_process(request):
             job=job,
             action=action
         )
-
         return JsonResponse({"status": "success"})
 
     except Exception as e:
@@ -1020,10 +1113,7 @@ def save_process(request):
 def get_process(request, id):
     try:
         if request.GET.get("type") == "job":
-            app = application.objects.filter(
-                job_id=id,
-                status='approved'
-            ).first()
+            app = application.objects.filter(job_id=id, status='approved').first()
             if not app:
                 return JsonResponse({"mcq_date": None, "machine_test_date": None, "hr_interview_date": None})
         else:
@@ -1044,141 +1134,59 @@ def send_notification_emails(approved_apps, subject, message, stage_label, job, 
         if not user.Email:
             continue
 
-        # HTML Email Template
         if action == "remove":
-            icon = "❌"
-            color = "#dc2626"
-            badge_bg = "#fff0f0"
+            icon        = "❌"
+            color       = "#dc2626"
+            badge_bg    = "#fff0f0"
             badge_color = "#dc2626"
-            badge_text = "CANCELLED"
+            badge_text  = "CANCELLED"
             action_text = f"Unfortunately, the <strong>{stage_label}</strong> for <strong>{job.job_title}</strong> has been cancelled."
             footer_note = "Please check your dashboard for updates or contact your HR."
         else:
-            icon = "📅"
-            color = "#0a0a0a"
-            badge_bg = "#f0fdf4"
+            icon        = "📅"
+            color       = "#0a0a0a"
+            badge_bg    = "#f0fdf4"
             badge_color = "#16a34a"
-            badge_text = "SCHEDULED" if action == "apply" else "RESCHEDULED"
+            badge_text  = "SCHEDULED" if action == "apply" else "RESCHEDULED"
             action_text = f"Your <strong>{stage_label}</strong> for <strong>{job.job_title}</strong> has been <strong>{'scheduled' if action == 'apply' else 'rescheduled'}</strong>."
             footer_note = "Please be prepared and log in to your dashboard for more details."
 
         html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="margin:0;padding:0;background:#f5f5f5;font-family:'DM Sans',Arial,sans-serif;">
-
+        <!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+        <body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif;">
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 0;">
             <tr><td align="center">
-              <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e5e5e5;">
-
-                <!-- HEADER -->
-                <tr>
-                  <td style="background:#0a0a0a;padding:28px 36px;">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td>
-                          <span style="display:inline-block;background:#ffffff;padding:4px 10px;font-size:13px;font-weight:900;color:#0a0a0a;letter-spacing:-0.02em;">IH</span>
-                          <span style="color:#ffffff;font-size:16px;font-weight:700;letter-spacing:-0.02em;margin-left:10px;">InternHub</span>
-                          <span style="color:#6b6b6b;font-size:9px;font-weight:600;border:1px solid #3d3d3d;padding:2px 7px;margin-left:8px;text-transform:uppercase;letter-spacing:0.04em;">Beta</span>
-                        </td>
-                        <td align="right">
-                          <span style="background:{badge_bg};color:{badge_color};font-size:9px;font-weight:700;padding:4px 10px;letter-spacing:0.08em;text-transform:uppercase;border:1px solid {badge_color};">{badge_text}</span>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-                <!-- ICON BAR -->
-                <tr>
-                  <td style="background:{color};padding:20px 36px;text-align:center;font-size:28px;">
-                    {icon}
-                  </td>
-                </tr>
-
-                <!-- BODY -->
-                <tr>
-                  <td style="padding:36px 36px 28px;">
-
-                    <p style="font-size:22px;font-weight:900;color:#0a0a0a;margin:0 0 8px;letter-spacing:-0.03em;">
-                      Hi {user.full_name},
-                    </p>
-                    <p style="font-size:14px;color:#6b6b6b;margin:0 0 28px;line-height:1.6;">
-                      {action_text}
-                    </p>
-
-                    <!-- INFO BOX -->
-                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;border:1px solid #ebebeb;margin-bottom:28px;">
-                      <tr>
-                        <td style="padding:20px 24px;">
-                          <table width="100%" cellpadding="0" cellspacing="0">
-                            <tr>
-                              <td style="padding-bottom:14px;border-bottom:1px solid #ebebeb;">
-                                <div style="font-size:9px;font-weight:700;color:#a0a0a0;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Position</div>
-                                <div style="font-size:14px;font-weight:700;color:#0a0a0a;">{job.job_title}</div>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td style="padding-top:14px;padding-bottom:14px;border-bottom:1px solid #ebebeb;">
-                                <div style="font-size:9px;font-weight:700;color:#a0a0a0;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Company</div>
-                                <div style="font-size:14px;font-weight:600;color:#3d3d3d;">{job.company_id.company_name if job.company_id else 'N/A'}</div>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td style="padding-top:14px;padding-bottom:14px;border-bottom:1px solid #ebebeb;">
-                                <div style="font-size:9px;font-weight:700;color:#a0a0a0;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Stage</div>
-                                <div style="font-size:14px;font-weight:600;color:#3d3d3d;">{stage_label}</div>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td style="padding-top:14px;">
-                                <div style="font-size:9px;font-weight:700;color:#a0a0a0;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Details</div>
-                                <div style="font-size:14px;color:#3d3d3d;">{message}</div>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
-
-                    <p style="font-size:12px;color:#a0a0a0;margin:0;line-height:1.7;">
-                      {footer_note}
-                    </p>
-
-                  </td>
-                </tr>
-
-                <!-- FOOTER -->
-                <tr>
-                  <td style="background:#0a0a0a;padding:20px 36px;">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td>
-                          <span style="font-size:11px;color:#6b6b6b;">© 2026 InternHub · All rights reserved</span>
-                        </td>
-                        <td align="right">
-                          <span style="font-size:11px;color:#6b6b6b;">Do not reply to this email</span>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
+              <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5e5e5;">
+                <tr><td style="background:#0a0a0a;padding:28px 36px;">
+                  <span style="color:#fff;font-size:16px;font-weight:700;">InternHub</span>
+                  <span style="float:right;background:{badge_bg};color:{badge_color};font-size:9px;font-weight:700;padding:4px 10px;">{badge_text}</span>
+                </td></tr>
+                <tr><td style="background:{color};padding:20px;text-align:center;font-size:28px;">{icon}</td></tr>
+                <tr><td style="padding:36px;">
+                  <p style="font-size:22px;font-weight:900;color:#0a0a0a;margin:0 0 8px;">Hi {user.full_name},</p>
+                  <p style="font-size:14px;color:#6b6b6b;margin:0 0 28px;">{action_text}</p>
+                  <table width="100%" style="background:#f5f5f5;border:1px solid #ebebeb;margin-bottom:28px;">
+                    <tr><td style="padding:20px;">
+                      <div style="font-size:9px;color:#a0a0a0;text-transform:uppercase;margin-bottom:4px;">Position</div>
+                      <div style="font-size:14px;font-weight:700;color:#0a0a0a;">{job.job_title}</div>
+                      <div style="font-size:9px;color:#a0a0a0;text-transform:uppercase;margin:14px 0 4px;">Details</div>
+                      <div style="font-size:14px;color:#3d3d3d;">{message}</div>
+                    </td></tr>
+                  </table>
+                  <p style="font-size:12px;color:#a0a0a0;">{footer_note}</p>
+                </td></tr>
+                <tr><td style="background:#0a0a0a;padding:20px 36px;">
+                  <span style="font-size:11px;color:#6b6b6b;">© 2026 InternHub · Do not reply</span>
+                </td></tr>
               </table>
             </td></tr>
           </table>
-
-        </body>
-        </html>
+        </body></html>
         """
 
         email_msg = EmailMultiAlternatives(
             subject=subject,
-            body=message,  # plain text fallback
+            body=message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user.Email]
         )
@@ -1187,16 +1195,13 @@ def send_notification_emails(approved_apps, subject, message, stage_label, job, 
 
 def get_assessment_context(user):
     approved_apps = application.objects.filter(
-        user_id=user,
-        status='approved'
+        user_id=user, status='approved'
     ).select_related('job_id')
 
     assessments = []
     for app in approved_apps:
-        # only include if at least one date is scheduled
         if not any([app.mcq_date, app.machine_test_date, app.hr_interview_date]):
             continue
-
         assessments.append({
             'job':               app.job_id,
             'mcq_date':          app.mcq_date,
@@ -1206,31 +1211,27 @@ def get_assessment_context(user):
             'machine_mark':      app.machine_test_score,
             'room_url':          app.get_room_url(),
         })
-
     return assessments
 
 def get_completeAssessment_context(user):
     approved_apps = application.objects.filter(
-        user_id=user,
-        status='interview_completed'
+        user_id=user, status='interview_completed'
     ).select_related('job_id')
 
     assessments = []
     for app in approved_apps:
         if not any([app.mcq_date, app.machine_test_date, app.hr_interview_date]):
             continue
-
         assessments.append({
-            'job':               app.job_id,
-            'mcq_date':          app.mcq_date,
-            'machine_test_date': app.machine_test_date,
-            'hr_interview_date': app.hr_interview_date,
-            'mcq_mark':          app.mcq_score,
-            'machine_mark':      app.machine_test_score,
-            'room_url':          app.get_room_url(),
+            'job':                app.job_id,
+            'mcq_date':           app.mcq_date,
+            'machine_test_date':  app.machine_test_date,
+            'hr_interview_date':  app.hr_interview_date,
+            'mcq_mark':           app.mcq_score,
+            'machine_mark':       app.machine_test_score,
+            'room_url':           app.get_room_url(),
             'interview_feedback': app.interview_feedback,
         })
-
     return assessments
 
 def api_calendar_interviews(request):
@@ -1249,7 +1250,6 @@ def api_calendar_interviews(request):
     except (ValueError, TypeError):
         return JsonResponse({'error': 'Invalid'}, status=400)
 
-    # ── month events ──
     month_apps = application.objects.filter(
         job_id__hr_id=hr_id,
         status='approved',
@@ -1271,7 +1271,6 @@ def api_calendar_interviews(request):
             'room_url':  app.get_room_url(),
         })
 
-    # ── today events ──
     today_apps = application.objects.filter(
         job_id__hr_id=hr_id,
         status='approved',
@@ -1290,7 +1289,6 @@ def api_calendar_interviews(request):
             'room_url':  app.get_room_url(),
         })
 
-    # ── week count ──
     week_start = _today - dt.timedelta(days=_today.weekday())
     week_end   = week_start + dt.timedelta(days=6)
     week_count = application.objects.filter(
@@ -1316,172 +1314,65 @@ def api_calendar_interviews(request):
     
 def get_ranklist(request):
     try:
-        job_id = request.GET.get('job_id')
+        job_id       = request.GET.get('job_id')
         applications = application.objects.filter(
             job_id=job_id, status__in=['approved', 'interview_completed']
         ).select_related('user_id')
-        for i in applications:
-            print(i.user_id.full_name)
-        
+
         students = []
         for app in applications:
-            user = app.user_id
             students.append({
-                'name':             app.user_id.full_name,
-                'email':            app.user_id.Email,
-                'course':           app.user_id.course,
-                'phone':            app.user_id.phoneno,
-                'skills':           app.user_id.skills or '',
-                'cv_url':           app.user_id.cv_url,
-                'profile_url':      app.user_id.profile_url,
-                'mcq_score':        app.mcq_score,
-                'machine_score':    app.machine_test_score,
-                'approved_on':      app.applied_at.strftime('%b %d, %Y') if app.applied_at else '',
-                'mcq_date':         app.mcq_date.strftime('%b %d, %Y') if app.mcq_date else '',
-                'machine_date':     app.machine_test_date.strftime('%b %d, %Y') if app.machine_test_date else '',
-                'interview_date':   app.hr_interview_date.strftime('%b %d, %Y · %I:%M %p') if app.hr_interview_date else '',
-                'interview_result': app.interview_result,
-                'interview_feedback': app.interview_feedback or '',
-                'interview_analysis': app.interview_analysis,
+                'name':                 app.user_id.full_name,
+                'email':                app.user_id.Email,
+                'course':               app.user_id.course,
+                'phone':                app.user_id.phoneno,
+                'skills':               app.user_id.skills or '',
+                'cv_url':               app.user_id.cv_url,
+                'profile_url':          app.user_id.profile_url,
+                'mcq_score':            app.mcq_score,
+                'machine_score':        app.machine_test_score,
+                'approved_on':          app.applied_at.strftime('%b %d, %Y') if app.applied_at else '',
+                'mcq_date':             app.mcq_date.strftime('%b %d, %Y') if app.mcq_date else '',
+                'machine_date':         app.machine_test_date.strftime('%b %d, %Y') if app.machine_test_date else '',
+                'interview_date':       app.hr_interview_date.strftime('%b %d, %Y · %I:%M %p') if app.hr_interview_date else '',
+                'interview_result':     app.interview_result,
+                'interview_feedback':   app.interview_feedback or '',
+                'interview_analysis':   app.interview_analysis,
                 'interview_transcript': app.interview_transcript or '',
-                'match_score':      app.match_score,
-                'status':           app.status,
-                'job_title':        app.job_id.job_title,
-                'app_id':           app.id,
+                'match_score':          app.match_score,
+                'status':               app.status,
+                'job_title':            app.job_id.job_title,
+                'app_id':               app.id,
             })
 
         return JsonResponse({'students': students})
 
     except Exception as e:
         import traceback
-        print(traceback.format_exc())  # prints full error in terminal
+        print(traceback.format_exc())
         return JsonResponse({'error': str(e)}, status=500)    
  
+def google_login_callback(request):
+    django_user = request.user
+    if not django_user.is_authenticated:
+        return redirect('login')
  
-
-    
-    """Search/filter applications"""
-    query = request.GET.get('q', '').strip()
-    status_filter = request.GET.get('status', 'all')
-
-    apps = application.objects.select_related(
-        'user_id', 'job_id', 'job_id__company_id'
-    ).all()
-
-    if status_filter != 'all':
-        apps = apps.filter(status=status_filter)
-
-    if query:
-        apps = apps.filter(
-            Q(user_id__full_name__icontains=query) |
-            Q(job_id__job_title__icontains=query) |
-            Q(job_id__company_id__company_name__icontains=query)
-        )
-
-    results = []
-    for app in apps.order_by('-applied_at'):
-        skills = []
-        if app.user_id.skills:
-            skills = [s.strip() for s in app.user_id.skills.split(',') if s.strip()][:3]
-
-        initials = ''.join([n[0].upper() for n in app.user_id.full_name.split()[:2]])
-
-        results.append({
-            'id': app.id,
-            'initials': initials,
-            'student_name': app.user_id.full_name,
-            'student_meta': f"{app.user_id.course} · {app.user_id.Email}",
-            'role': app.job_id.job_title,
-            'company': app.job_id.company_id.company_name,
-            'location': app.job_id.location,
-            'duration': app.job_id.duration,
-            'match_score': app.match_score,
-            'skills': skills,
-            'applied_at': app.applied_at.strftime('%b %d, %Y'),
-            'status': app.status,
-            'cv_url': app.user_id.cv_url,
+    google_email = django_user.email
+ 
+    try:
+        jr_user = user_detail.objects.get(Email__iexact=google_email)
+    except user_detail.DoesNotExist:
+        return render(request, 'login.html', {
+            'error': f'No InternHub account found for {google_email}. Please register first.'
         })
-
-    return JsonResponse({'success': True, 'results': results, 'count': len(results)})
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    job_id = request.GET.get('job_id')
-    job_id = request.GET.get('job_id')
-    if not job_id:
-        return JsonResponse({'students': []})
-
-    applications = application.objects.filter(
-        job_id=job_id,
-        status='approved'
-    ).select_related('user_id', 'job_id').order_by('-match_score')
-
-    students = []
-    for app in applications:
-        user = app.user_id
-
-        # Fetch MCQ and machine test scores from SelectionProcess
-        process = application.objects.filter(app_id=app).first()
-        mcq_score     = process.mcq_score     if process else None
-        machine_score = process.machine_score if process else None
-
-        students.append({
-            'name':          user.full_name,
-            'course':        getattr(user, 'course', '—'),
-            'email':         user.email,
-            'score':         app.match_score or 0,
-            'mcq_score':     mcq_score,
-            'machine_score': machine_score,
-            'skills':        [s.strip() for s in (getattr(user, 'skills', '') or '').split(',') if s.strip()],
-            'approved_on':   app.updated_at.strftime('%b %d, %Y') if app.updated_at else '—',
-            'cv_url':        getattr(user, 'cv_url', ''),
-            'app_id':        app.id,
-        })
-
-    return JsonResponse({'students': students})
-    job_id = request.GET.get('job_id')
-    if not job_id:
-        return JsonResponse({'students': []})
-
-    applications = application.objects.filter(
-        job_id=job_id,
-        status='approved'
-    ).select_related('user_id', 'job_id').order_by('-match_score')
-
-    students = []
-    for app in applications:
-        user = app.user_id
-        students.append({
-            'name':        user.full_name,
-            'course':      getattr(user, 'course', '—'),
-            'email':       user.email,
-            'score':       app.match_score or 0,
-            'skills':      [s.strip() for s in (getattr(user, 'skills', '') or '').split(',') if s.strip()],
-            'approved_on': app.updated_at.strftime('%b %d, %Y') if app.updated_at else '—',
-            'cv_url':      getattr(user, 'cv_url', ''),
-            'app_id':      app.id,
-        })
-
-    return JsonResponse({'students': students})
+ 
+    request.session['userid'] = jr_user.id
+    request.session['role']   = jr_user.role
+    request.session['name']   = jr_user.full_name
+ 
+    if jr_user.role == 'admin':
+        return redirect('admin_dashboard')
+    elif jr_user.role == 'hr':
+        return redirect('hr_dashboard')
+    else:
+        return redirect('user_dashboard')

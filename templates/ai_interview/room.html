@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voice Interview — {{ job_role }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --surface2: #ededf2;
+      --border: #e2e2ea;
+      --border2: #cacad6;
+      --accent: #111118;
+      --accent-soft: rgba(17,17,24,0.06);
+      --red: #d63050;
+      --green: #16a34a;
+      --text: #111118;
+      --muted: #88889a;
+      --muted2: #c4c4d0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+
+    /* Dot grid background */
+    body::before {
+      content:''; position:fixed; inset:0;
+      background-image: radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events:none; z-index:0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.9rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: relative; z-index: 2;
+      box-shadow: 0 1px 0 var(--border);
+    }
+    .h-left { display:flex; align-items:center; gap:0.75rem; }
+    .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1rem; color: var(--text); }
+    .role-tag {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-size:0.72rem; font-weight:700;
+      padding: 3px 12px; border-radius:100px;
+      letter-spacing:0.05em;
+    }
+    .status-dot {
+      width:8px; height:8px; border-radius:50%;
+      background: var(--muted2);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .status-dot.connected { background: var(--green); box-shadow: 0 0 6px rgba(22,163,74,0.35); animation: pulse 2s infinite; }
+    .status-dot.speaking  { background: var(--accent); box-shadow: 0 0 6px rgba(17,17,24,0.3); }
+    .status-dot.listening { background: #555570; box-shadow: 0 0 6px rgba(85,85,112,0.35); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .status-label { font-size:0.8rem; color:var(--muted); transition: color 0.3s; }
+
+    /* ── MAIN AREA ── */
+    main {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      overflow: hidden;
+      position: relative; z-index:1;
+    }
+
+    /* ── ORB SECTION ── */
+    .orb-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      padding: 2rem;
+      background: var(--bg);
+    }
+
+    .orb-wrap {
+      position: relative;
+      width: 220px; height: 220px;
+      display: flex; align-items:center; justify-content:center;
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.08);
+      animation: ringPulse 3s ease-in-out infinite;
+    }
+    .ring:nth-child(1) { width:220px; height:220px; animation-delay:0s; }
+    .ring:nth-child(2) { width:180px; height:180px; animation-delay:0.5s; border-color:rgba(0,0,0,0.1); }
+    .ring:nth-child(3) { width:140px; height:140px; animation-delay:1s; border-color:rgba(0,0,0,0.13); }
+    @keyframes ringPulse { 0%,100%{transform:scale(1);opacity:0.6} 50%{transform:scale(1.04);opacity:1} }
+
+    .orb-core {
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,1);
+      border: 1px solid var(--border);
+      transition: all 0.3s;
+      position: relative; z-index:2;
+    }
+    .orb-core.speaking {
+      animation: orbSpeak 0.4s ease-in-out infinite alternate;
+      background: #111118;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.15);
+      border-color: #111118;
+    }
+    .orb-core.listening {
+      animation: orbListen 1s ease-in-out infinite alternate;
+      background: var(--surface2);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.1);
+    }
+    @keyframes orbSpeak  { from{transform:scale(1)} to{transform:scale(1.1)} }
+    @keyframes orbListen { from{transform:scale(0.97)} to{transform:scale(1.03)} }
+
+    .waveform {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 40px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .waveform.active { opacity: 1; }
+    .wbar {
+      width: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+      animation: waveAnim 1s ease-in-out infinite;
+      height: 6px;
+    }
+    .wbar:nth-child(1){animation-delay:.0s;height:10px}
+    .wbar:nth-child(2){animation-delay:.1s;height:20px}
+    .wbar:nth-child(3){animation-delay:.2s;height:30px}
+    .wbar:nth-child(4){animation-delay:.3s;height:36px}
+    .wbar:nth-child(5){animation-delay:.4s;height:28px}
+    .wbar:nth-child(6){animation-delay:.3s;height:36px}
+    .wbar:nth-child(7){animation-delay:.2s;height:30px}
+    .wbar:nth-child(8){animation-delay:.1s;height:20px}
+    .wbar:nth-child(9){animation-delay:.0s;height:10px}
+    @keyframes waveAnim { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }
+
+    .state-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+      min-height: 1.4em;
+      transition: color 0.3s;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── TRANSCRIPT PANEL ── */
+    .transcript-panel {
+      border-left: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 0.9rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex; align-items:center; gap:6px;
+      background: var(--surface2);
+    }
+    .transcript-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .transcript-list::-webkit-scrollbar { width:3px; }
+    .transcript-list::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+
+    .t-item {
+      padding: 0.7rem 0.9rem;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      line-height: 1.55;
+      animation: tSlide 0.3s ease both;
+    }
+    @keyframes tSlide { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:translateX(0)} }
+    .t-item.ai {
+      background: #f0f0f5;
+      border: 1px solid var(--border);
+      color: #222233;
+    }
+    .t-item.user {
+      background: #111118;
+      border: 1px solid #111118;
+      color: #f0f0f5;
+    }
+    .t-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      opacity: 0.55;
+    }
+    .t-item.ai .t-label { color: #444458; }
+    .t-item.user .t-label { color: #c0c0d0; }
+
+    /* ── FOOTER ── */
+    footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 1.1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      position: relative; z-index:2;
+    }
+
+    .ctrl-btn {
+      display: flex; flex-direction:column;
+      align-items: center; gap: 5px;
+      background: none; border: none;
+      cursor: pointer; color: var(--muted);
+      font-size: 0.7rem; letter-spacing:0.04em;
+      transition: color 0.2s;
+    }
+    .ctrl-btn:hover { color: var(--text); }
+    .ctrl-btn .icon {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      display: flex; align-items:center; justify-content:center;
+      font-size: 1.1rem;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .ctrl-btn:hover .icon { border-color: var(--border2); background: var(--surface); }
+
+    .mic-btn {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: #ffffff;
+      font-size: 1.6rem;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      transition: all 0.2s;
+      display: flex; align-items:center; justify-content:center;
+    }
+    .mic-btn:hover { transform: scale(1.06); box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+    .mic-btn.muted {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--muted);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .mic-btn.disabled {
+      background: var(--border);
+      cursor: not-allowed;
+      box-shadow: none;
+      color: var(--muted2);
+    }
+
+    .end-btn .icon { background: rgba(214,48,80,0.05); border-color: rgba(214,48,80,0.18); }
+    .end-btn:hover .icon { background: rgba(214,48,80,0.08); border-color: var(--red); color: var(--red); }
+
+    /* ── OVERLAY ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(245,245,247,0.88);
+      display: flex; align-items:center; justify-content:center;
+      z-index: 100;
+      flex-direction: column; gap: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+    .overlay.hidden { display:none; }
+    .overlay-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 2.5rem;
+      max-width: 380px; width:90%;
+      text-align: center;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+    }
+    .overlay-icon { display:flex; align-items:center; justify-content:center; margin-bottom: 1rem; }
+    .overlay-card h2 { font-family:'Syne',sans-serif; font-size:1.4rem; font-weight:800; margin-bottom:0.5rem; color: var(--text); }
+    .overlay-card p { color:var(--muted); font-size:0.88rem; line-height:1.6; margin-bottom:1.5rem; }
+    .overlay-btn {
+      width:100%; padding:0.85rem;
+      border-radius:12px; border:none;
+      background: var(--accent); color:#fff;
+      font-family:'Syne',sans-serif; font-size:0.95rem; font-weight:700;
+      cursor:pointer; transition: all 0.2s;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+    .overlay-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
+    .spinner {
+      width:40px; height:40px;
+      border:3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius:50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to{transform:rotate(360deg)} }
+  </style>
+</head>
+<body>
+
+  <!-- CONNECTING OVERLAY -->
+  <div class="overlay" id="overlay">
+    <div class="spinner"></div>
+    <div style="color:var(--muted); font-size:0.88rem; font-family:'DM Mono',monospace; letter-spacing:0.03em;">Connecting to AI Interviewer...</div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="h-left">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="logo">AI Interview</span>
+      <span class="role-tag">{{ job_role }}</span>
+    </div>
+    <span class="status-label" id="statusLabel">Connecting...</span>
+  </header>
+
+  <!-- MAIN -->
+  <main>
+    <div class="orb-section">
+      <div class="orb-wrap">
+        <div class="ring"></div>
+        <div class="ring"></div>
+        <div class="ring"></div>
+        <div class="orb-core" id="orbCore"></div>
+      </div>
+      <div class="waveform" id="waveform">
+        <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+        <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+        <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+      </div>
+      <div class="state-label" id="stateLabel">Initializing...</div>
+    </div>
+
+    <div class="transcript-panel">
+      <div class="panel-header">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Transcript
+      </div>
+      <div class="transcript-list" id="transcriptList">
+        <div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:2rem 1rem;line-height:1.6;">
+          The conversation transcript<br>will appear here in real time.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <button class="ctrl-btn end-btn" onclick="endInterview()">
+      <div class="icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+      </div>
+      <span>Summary</span>
+    </button>
+
+    <button class="mic-btn disabled" id="micBtn" onclick="toggleMic()" title="Toggle microphone">
+      <svg id="micIcon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>
+    </button>
+
+    <button class="ctrl-btn end-btn" onclick="endInterview()">
+      <div class="icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      </div>
+      <span>End</span>
+    </button>
+  </footer>
+
+<script>
+  const JOB_ROLE = "{{ job_role }}";
+
+  let socket, stream, mediaRecorder, audioContext, analyser;
+  let isMuted = false, isConnected = false;
+  let isSpeaking = false, aiSpeaking = false;
+  let silenceTimer = null, chunks = [];
+  let ttsQueue = [], ttsPlaying = false;
+
+  const micBtn      = document.getElementById('micBtn');
+  const orbCore     = document.getElementById('orbCore');
+  const waveform    = document.getElementById('waveform');
+  const stateLabel  = document.getElementById('stateLabel');
+  const statusDot   = document.getElementById('statusDot');
+  const statusLabel = document.getElementById('statusLabel');
+
+  function setStatus(state) {
+    statusDot.className = 'status-dot';
+    orbCore.className = 'orb-core';
+    waveform.classList.remove('active');
+    const labels = {
+      connecting:  ['Connecting...', ''],
+      connected:   ['Ready — speak now', 'connected'],
+      listening:   ['Listening...', 'listening'],
+      speaking:    ['AI is speaking...', 'speaking'],
+      processing:  ['Processing...', 'connected'],
+      muted:       ['Microphone muted', 'connected'],
+    };
+    const [label, dotClass] = labels[state] || ['', ''];
+    statusLabel.textContent = label;
+    stateLabel.textContent  = label;
+    if (dotClass) statusDot.classList.add(dotClass);
+    if (state === 'listening') orbCore.classList.add('listening');
+    if (state === 'speaking')  { orbCore.classList.add('speaking'); waveform.classList.add('active'); }
+  }
+
+  function showError(msg) {
+    document.getElementById('overlay').innerHTML = `
+      <div class="overlay-card">
+        <div class="overlay-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d63050" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <h2>Error</h2>
+        <p style="word-break:break-all;font-size:0.78rem;">${msg}</p>
+        <button class="overlay-btn" onclick="location.href='/ai_interview/'">← Go Back</button>
+      </div>`;
+  }
+
+  function addTranscript(role, text) {
+    const list = document.getElementById('transcriptList');
+    const placeholder = list.querySelector('div[style]');
+    if (placeholder) placeholder.remove();
+    const div = document.createElement('div');
+    div.className = `t-item ${role}`;
+    div.innerHTML = `<div class="t-label">${role === 'ai' ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="8" r="3"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Interviewer' : '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:4px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> You'}</div>${text}`;
+    list.appendChild(div);
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function speakChunk(text) {
+    ttsQueue.push(text);
+    if (!ttsPlaying) playNextChunk();
+  }
+
+  function playNextChunk() {
+    if (ttsQueue.length === 0) {
+      ttsPlaying = false; aiSpeaking = false; isSpeaking = false;
+      clearTimeout(silenceTimer); setStatus('connected'); return;
+    }
+    ttsPlaying = true; aiSpeaking = true; setStatus('speaking');
+    const text = ttsQueue.shift();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 1.0; utt.pitch = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('en'));
+    if (preferred) utt.voice = preferred;
+    utt.onend = () => playNextChunk();
+    utt.onerror = () => playNextChunk();
+    window.speechSynthesis.speak(utt);
+  }
+
+  function interruptAI() {
+    window.speechSynthesis.cancel();
+    ttsQueue = []; ttsPlaying = false; aiSpeaking = false;
+  }
+
+  function handleEvent(event) {
+    console.log('[EVENT]', event.type);
+    switch (event.type) {
+      case 'session.created':
+        document.getElementById('overlay').classList.add('hidden');
+        micBtn.classList.remove('disabled');
+        isConnected = true; setStatus('connected'); break;
+      case 'response.created': setStatus('speaking'); break;
+      case 'response.done': break;
+      case 'user_transcript': addTranscript('user', event.text); setStatus('processing'); break;
+      case 'ai_chunk': speakChunk(event.text); break;
+      case 'ai_response': addTranscript('ai', event.text); break;
+      case 'error': console.error('[Error]', event.message); showError(event.message); break;
+    }
+  }
+
+  async function startMic() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+      audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 1024; analyser.smoothingTimeConstant = 0.8;
+      source.connect(analyser);
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        if (chunks.length === 0) return;
+        setStatus('processing');
+        const blob = new Blob(chunks, { type: 'audio/webm' }); chunks = [];
+        const arrayBuffer = await blob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        let binary = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < uint8Array.length; i += chunkSize)
+          binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize));
+        const base64 = btoa(binary);
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'audio_chunk', audio: base64 }));
+          socket.send(JSON.stringify({ type: 'speech_end' }));
+        }
+      };
+      function vadLoop() {
+        analyser.getByteFrequencyData(dataArray);
+        const speechStart = Math.floor(300  / (audioContext.sampleRate / analyser.fftSize));
+        const speechEnd   = Math.floor(3400 / (audioContext.sampleRate / analyser.fftSize));
+        let sum = 0;
+        for (let i = speechStart; i < speechEnd; i++) sum += dataArray[i];
+        const avg = sum / (speechEnd - speechStart);
+        if (!isMuted && isConnected) {
+          if (avg > 20 && !isSpeaking) {
+            if (aiSpeaking) interruptAI();
+            isSpeaking = true; chunks = []; clearTimeout(silenceTimer);
+            if (mediaRecorder.state !== 'recording') mediaRecorder.start();
+            socket.send(JSON.stringify({ type: 'speech_start' }));
+            setStatus('listening');
+          } else if (avg < 10 && isSpeaking) {
+            clearTimeout(silenceTimer);
+            silenceTimer = setTimeout(() => {
+              if (isSpeaking && mediaRecorder.state === 'recording') { isSpeaking = false; mediaRecorder.stop(); }
+            }, 800);
+          } else if (avg > 20 && isSpeaking) { clearTimeout(silenceTimer); }
+        }
+        requestAnimationFrame(vadLoop);
+      }
+      vadLoop();
+    } catch (err) { showError('Microphone error: ' + err.message); }
+  }
+
+  function init() {
+    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = `${wsScheme}://${window.location.host}/ws/interview/${encodeURIComponent(JOB_ROLE)}/`;
+    socket = new WebSocket(wsUrl);
+    socket.onopen    = () => console.log('[WS] Connected');
+    socket.onmessage = (e) => handleEvent(JSON.parse(e.data));
+    socket.onerror   = () => showError('WebSocket connection failed.');
+    socket.onclose   = (e) => console.log('[WS] Closed:', e.code);
+  }
+
+  const MIC_SVG  = `<svg id="micIcon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>`;
+  const MUTE_SVG = `<svg id="micIcon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V5a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/></svg>`;
+
+  function toggleMic() {
+    if (micBtn.classList.contains('disabled')) return;
+    isMuted = !isMuted;
+    micBtn.innerHTML = isMuted ? MUTE_SVG : MIC_SVG;
+    micBtn.classList.toggle('muted', isMuted);
+    if (isMuted) {
+      clearTimeout(silenceTimer);
+      if (mediaRecorder && mediaRecorder.state === 'recording') { mediaRecorder.stop(); isSpeaking = false; }
+      setStatus('muted');
+    } else { setStatus('connected'); }
+  }
+
+  function endInterview() {
+    window.speechSynthesis.cancel();
+    if (socket) socket.close();
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    if (audioContext) audioContext.close();
+    window.location.href = '/ai_interview/';
+  }
+
+  window.speechSynthesis.onvoiceschanged = () => {};
+  init();
+  setTimeout(startMic, 1000);
+</script>
+
+</body>
+</html>

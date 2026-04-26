@@ -1035,23 +1035,39 @@ document.addEventListener('keydown', e => {
   }
 
   document.getElementById("passwordForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-    let formData = new FormData(this);
-    let msgBox = document.getElementById("passwordMessage");
-    fetch("{% url 'change_password' %}", {
-        method: "POST",
-        headers: { "X-CSRFToken": getCookie("csrftoken") },
-        body: formData
-    }).then(r => r.json()).then(data => {
-        if (data.status === "success") {
-            msgBox.innerHTML = `<div style="background:#e7ffe7;color:#0a7a0a;padding:10px;text-align:center;margin-bottom:12px;">${data.message}</div>`;
-            this.reset();
-        } else {
-            msgBox.innerHTML = `<div style="background:#ffe6e6;color:#d10000;padding:10px;text-align:center;margin-bottom:12px;">${data.message}</div>`;
-        }
-    });
-});
+      e.preventDefault();
+      let formData = new FormData(this);
+      let msgBox   = document.getElementById("passwordMessage");
+      let btn      = this.querySelector("button[type='submit']");
 
+      btn.disabled    = true;
+      btn.textContent = "Updating…";
+
+      fetch("/change_password/", {
+          method: "POST",
+          headers: { "X-CSRFToken": getCookie("csrftoken") },
+          body: formData
+      })
+      .then(r => {
+          if (!r.ok) throw new Error("Server error: " + r.status);
+          return r.json();
+      })
+      .then(data => {
+          if (data.status === "success") {
+              msgBox.innerHTML = `<div style="background:#e7ffe7;color:#0a7a0a;padding:10px;text-align:center;margin-bottom:12px;">${data.message}</div>`;
+              this.reset();
+          } else {
+              msgBox.innerHTML = `<div style="background:#ffe6e6;color:#d10000;padding:10px;text-align:center;margin-bottom:12px;">${data.message}</div>`;
+          }
+      })
+      .catch(err => {
+          msgBox.innerHTML = `<div style="background:#ffe6e6;color:#d10000;padding:10px;text-align:center;margin-bottom:12px;">Network error. Please try again.</div>`;
+      })
+      .finally(() => {
+          btn.disabled    = false;
+          btn.textContent = "Update Password";
+      });
+  });
 
   const today = new Date();
   let curYear  = today.getFullYear();

@@ -18,7 +18,7 @@ load_dotenv()
 TIME_ZONE = 'Asia/Kolkata'
 USE_TZ = True
 
-
+GROQ_API_KEY=os.getenv('GROQ_API_KEY')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,6 +30,8 @@ TEMPLATES_DIRS=os.path.join(BASE_DIR,'templates')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-%h-7%g&4j9t@9)nzxgf+cakhkjnj$zn+)l)3x-!#0bq^y+j^u8'
+
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -59,6 +61,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'channels',
     'interview',
+    'ai_interview',
 ]
 
 MIDDLEWARE = [
@@ -168,14 +171,20 @@ EMAIL_HOST_USER = 'bhagathsurendran54@gmail.com'
 EMAIL_HOST_PASSWORD = 'ltjv wzvq bvsy fbgs'
 
 SITE_ID = 1
-
-LOGIN_REDIRECT_URL = '/user_dashboard/'
+ 
+LOGIN_REDIRECT_URL = '/google-login-callback/'
 LOGOUT_REDIRECT_URL = '/login/'
-
+ 
 SOCIALACCOUNT_LOGIN_ON_GET = True
-
+ 
+# Allauth - no extra signup form for social logins
+ACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_REQUIRED = False
+SOCIALACCOUNT_QUERY_EMAIL = True
+ 
 ASGI_APPLICATION = 'jr_system.asgi.application'
-
+ 
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels.layers.InMemoryChannelLayer',

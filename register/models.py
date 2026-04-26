@@ -2,6 +2,7 @@ from django.db import models
 import uuid
 from django.utils import timezone
 
+
 class user_detail(models.Model):
     id=models.AutoField(primary_key=True)
     full_name=models.CharField(max_length=100)
@@ -14,6 +15,16 @@ class user_detail(models.Model):
     role=models.CharField(max_length=20, default="user")
     skills = models.TextField(blank=True, null=True)
     reg_date = models.DateTimeField(default=timezone.now)
+ 
+class AutoLoginToken(models.Model):
+    user       = models.ForeignKey(user_detail, on_delete=models.CASCADE, related_name='auto_login_tokens')
+    token      = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def is_valid(self):
+        from django.utils import timezone
+        return timezone.now() < self.expires_at 
     
 class Employee(models.Model):
     company_name = models.CharField(max_length=200)

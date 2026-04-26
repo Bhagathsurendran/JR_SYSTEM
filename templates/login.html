@@ -260,6 +260,16 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: var(--white); }
     ::-webkit-scrollbar-thumb { background: var(--light); }
+  
+    /* Remember me */
+    .remember-row{display:flex;align-items:center;margin-bottom:18px}
+    .remember-label{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none}
+    .remember-cb{display:none}
+    .remember-custom{width:16px;height:16px;border:1.5px solid var(--ghost);background:var(--pure);flex-shrink:0;position:relative;transition:all .15s}
+    .remember-cb:checked + .remember-custom{background:var(--black);border-color:var(--black)}
+    .remember-cb:checked + .remember-custom::after{content:'';position:absolute;left:4px;top:1px;width:5px;height:9px;border:2px solid #fff;border-top:none;border-left:none;transform:rotate(45deg)}
+    .remember-text{font-size:13px;color:var(--muted);font-weight:500}
+
   </style>
 </head>
 <body>
@@ -282,7 +292,7 @@
         <div><div class="stat-num">12k+</div><div class="stat-label">Students Placed</div></div>
       </div>
     </div>
-    <div class="left-footer">© 2026 InternHub · <a href="#">Privacy</a> · <a href="#">Terms</a></div>
+    <div class="left-footer">© 2026 InternHub · <a href="#" onclick="openModal('privacy'); return false;">Privacy</a> · <a href="#" onclick="openModal('terms'); return false;">Terms</a></div>
   </div>
 
   <!-- ── RIGHT PANEL ── -->
@@ -353,6 +363,15 @@
           </div>
         </div>
 
+
+        <div class="remember-row">
+          <label class="remember-label">
+            <input type="checkbox" name="remember_me" id="remember_me" class="remember-cb">
+            <span class="remember-custom"></span>
+            <span class="remember-text">Remember me for 30 days</span>
+          </label>
+        </div>
+
         <button type="submit" class="submit-btn">
           <span>Sign in</span>
           <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="position:relative;z-index:1"><path stroke-linecap="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -363,7 +382,7 @@
         New to InternHub? <a href="{% url 'reg' %}">Create an account</a>
       </div>
       <div class="terms-note">
-        By signing in you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+        By signing in you agree to our <a href="#" onclick="openModal('terms'); return false;">Terms of Service</a> and <a href="#" onclick="openModal('privacy'); return false;">Privacy Policy</a>.
       </div>
     </div>
   </div>
@@ -390,5 +409,161 @@
     }, 1800);
   }
 </script>
+
+<!-- ── TERMS & PRIVACY MODALS ─────────────────────────── -->
+<style>
+  .ih-modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,.55); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .ih-modal-overlay.active { display: flex; }
+  .ih-modal {
+    background: #fff; width: min(680px, 92vw); max-height: 82vh;
+    border-radius: 2px; display: flex; flex-direction: column;
+    box-shadow: 0 24px 64px rgba(0,0,0,.18);
+    animation: modalIn .22s ease;
+  }
+  @keyframes modalIn {
+    from { opacity:0; transform: translateY(18px) scale(.97); }
+    to   { opacity:1; transform: translateY(0)   scale(1); }
+  }
+  .ih-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 28px 18px; border-bottom: 1px solid #ebebeb;
+  }
+  .ih-modal-header h2 {
+    font-family: 'DM Sans', sans-serif; font-size: 17px;
+    font-weight: 700; color: #0a0a0a; margin: 0;
+  }
+  .ih-modal-close {
+    background: none; border: none; cursor: pointer;
+    color: #888; font-size: 22px; line-height: 1;
+    padding: 2px 6px; border-radius: 4px;
+    transition: background .15s, color .15s;
+  }
+  .ih-modal-close:hover { background: #f2f2f2; color: #0a0a0a; }
+  .ih-modal-body {
+    padding: 24px 28px; overflow-y: auto; flex: 1;
+    font-family: 'DM Sans', sans-serif; font-size: 13.5px;
+    color: #444; line-height: 1.75;
+  }
+  .ih-modal-body h3 {
+    font-size: 13px; font-weight: 700; color: #0a0a0a;
+    margin: 20px 0 6px; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .ih-modal-body h3:first-child { margin-top: 0; }
+  .ih-modal-body p { margin: 0 0 10px; }
+  .ih-modal-footer {
+    padding: 16px 28px; border-top: 1px solid #ebebeb; text-align: right;
+  }
+  .ih-modal-footer button {
+    background: #0a0a0a; color: #fff; border: none; cursor: pointer;
+    padding: 10px 28px; font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px; font-weight: 600; border-radius: 2px;
+    transition: opacity .15s;
+  }
+  .ih-modal-footer button:hover { opacity: .82; }
+</style>
+
+<!-- Terms of Service Modal -->
+<div class="ih-modal-overlay" id="modal-terms" onclick="if(event.target===this) closeModal('terms')">
+  <div class="ih-modal">
+    <div class="ih-modal-header">
+      <h2>Terms of Service</h2>
+      <button class="ih-modal-close" onclick="closeModal('terms')">&times;</button>
+    </div>
+    <div class="ih-modal-body">
+      <h3>1. Acceptance of Terms</h3>
+      <p>By accessing or using InternHub, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our platform.</p>
+
+      <h3>2. Use of Platform</h3>
+      <p>InternHub is an AI-powered internship matching platform. You agree to use it only for lawful purposes and in a manner that does not infringe the rights of others or restrict their use of the platform.</p>
+
+      <h3>3. Account Responsibility</h3>
+      <p>You are responsible for maintaining the confidentiality of your account credentials. You agree to notify us immediately of any unauthorized use of your account.</p>
+
+      <h3>4. CV & Data Upload</h3>
+      <p>By uploading your CV or personal data, you grant InternHub a limited licence to process and analyse that data solely to provide our matching services. We will not share your data with third parties without your consent.</p>
+
+      <h3>5. Accuracy of Information</h3>
+      <p>You agree to provide accurate, current, and complete information. InternHub reserves the right to suspend accounts found to contain false or misleading information.</p>
+
+      <h3>6. Intellectual Property</h3>
+      <p>All content, branding, and technology on this platform remain the intellectual property of InternHub. You may not copy, reproduce, or distribute any part of the platform without written permission.</p>
+
+      <h3>7. Termination</h3>
+      <p>We reserve the right to terminate or suspend access to our platform at any time, without notice, for conduct that violates these Terms or is harmful to other users or us.</p>
+
+      <h3>8. Changes to Terms</h3>
+      <p>InternHub may update these Terms at any time. Continued use of the platform after changes constitutes your acceptance of the new Terms.</p>
+
+      <h3>9. Contact</h3>
+      <p>For questions about these Terms, contact us at <strong>support@internhub.in</strong>.</p>
+    </div>
+    <div class="ih-modal-footer">
+      <button onclick="closeModal('terms')">Got it</button>
+    </div>
+  </div>
+</div>
+
+<!-- Privacy Policy Modal -->
+<div class="ih-modal-overlay" id="modal-privacy" onclick="if(event.target===this) closeModal('privacy')">
+  <div class="ih-modal">
+    <div class="ih-modal-header">
+      <h2>Privacy Policy</h2>
+      <button class="ih-modal-close" onclick="closeModal('privacy')">&times;</button>
+    </div>
+    <div class="ih-modal-body">
+      <h3>1. Information We Collect</h3>
+      <p>We collect information you provide directly: your name, email, phone number, course, profile photo, and CV. We also collect usage data such as login timestamps and application activity.</p>
+
+      <h3>2. How We Use Your Information</h3>
+      <p>Your data is used to match you with relevant internship listings, communicate application updates, and improve our AI matching accuracy. We do not sell your personal data.</p>
+
+      <h3>3. CV & Skills Analysis</h3>
+      <p>Uploaded CVs are processed by our AI engine to extract skills and match you with jobs. Extracted data is stored securely and used only within the platform.</p>
+
+      <h3>4. Google Sign-In</h3>
+      <p>If you sign in with Google, we receive your name and email address from Google. This is used only to identify your account — we do not access your Gmail, Drive, or other Google services.</p>
+
+      <h3>5. Data Sharing</h3>
+      <p>Your profile and CV may be visible to HR users and companies on the platform when you apply for a position. We do not share data with advertisers or unrelated third parties.</p>
+
+      <h3>6. Data Security</h3>
+      <p>We implement industry-standard security measures to protect your data. However, no method of transmission over the internet is 100% secure.</p>
+
+      <h3>7. Data Retention</h3>
+      <p>We retain your data for as long as your account is active. You may request deletion of your account and associated data by contacting our support team.</p>
+
+      <h3>8. Your Rights</h3>
+      <p>You have the right to access, correct, or delete your personal data at any time. Contact us at <strong>privacy@internhub.in</strong> to exercise these rights.</p>
+
+      <h3>9. Updates</h3>
+      <p>We may update this Privacy Policy periodically. We will notify you of significant changes via email or a notice on the platform.</p>
+    </div>
+    <div class="ih-modal-footer">
+      <button onclick="closeModal('privacy')">Got it</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openModal(type) {
+    document.getElementById('modal-' + type).classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(type) {
+    document.getElementById('modal-' + type).classList.remove('active');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeModal('terms');
+      closeModal('privacy');
+    }
+  });
+</script>
+
 </body>
 </html>

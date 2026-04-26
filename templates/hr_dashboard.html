@@ -439,7 +439,7 @@
     <div class="card">
       <div style="overflow-x:auto">
         <table class="app-table" id="apps-table">
-          <thead><tr><th>Student</th><th>Applied Role</th><th>Match</th><th>Skills</th><th>Applied On</th><th>Status</th><th>Action</th></tr></thead>
+          <thead><tr><th>Student</th><th>Applied Role</th><th>Match</th><th>Skills</th><th>Applied On</th><th>Status</th></tr></thead>
           <tbody id="apps-tbody">
           {% for a in applications %}
             <tr data-status="review" onclick="openModal('{{ a.user_id.full_name }}','AK','{{ a.user_id.Email }}','{{ a.user_id.course }}','{{ a.job_id.job_title }}','{{ a.job_id.company_id.company_name }} · Hybrid','{{ a.applied_at }}','{{ a.match_score }}',['Python','ML','TensorFlow'],'review')">
@@ -461,7 +461,6 @@
               </td>
               <td style="font-size:12px;color:var(--muted)">{{ a.applied_at }}</td>
               <td><span class="s-pill s-review">{{ a.status }}</span></td>
-              <td><div class="action-pair"><button class="btn btn-approve" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();approveRow(this)">Approve</button><button class="btn btn-reject" style="height:30px;padding:0 12px;font-size:11px" onclick="event.stopPropagation();rejectRow(this)">Reject</button></div></td>
             </tr>
           {% endfor %}
           </tbody>
